@@ -12,14 +12,14 @@ with open(osp.join(setup_dir, '.n6-version')) as f:
 
 
 requires = [
-    'n6lib==' + n6_version,
-
+    f'n6lib=={n6_version}',
     'Flask==1.0.2',
     'Flask-Admin==1.5.2',
     'SQLAlchemy==0.9.10',
     'WTForms==2.1',
     'werkzeug<1.0',
 ]
+
 
 setup(
     name='n6adminpanel',

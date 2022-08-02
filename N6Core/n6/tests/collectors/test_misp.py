@@ -295,9 +295,7 @@ samples_14_02 = {
     144653: b'Event nr 144653 binary data.',
 }
 
-all_samples = copy.deepcopy(samples_10_02)
-all_samples.update(samples_14_02)
-
+all_samples = copy.deepcopy(samples_10_02) | samples_14_02
 all_samples_ids = set(all_samples.keys())
 samples_14_02_ids = set(samples_14_02.keys())
 
@@ -381,8 +379,7 @@ class TestMispCollector(unittest.TestCase):
         events = [x['Event'] for x in raw_events
                   if (datetime.datetime.strptime(x['Event']['date'], datetime_format) >
                       initial_datetime)]
-        result = {'response': [{'Event': x} for x in events]}
-        return result
+        return {'response': [{'Event': x} for x in events]}
 
     def _publish_output_mock(self, rk, body, props, **kwargs):
         if kwargs.get('exchange') == 'sample':
@@ -408,17 +405,17 @@ class TestMispCollector(unittest.TestCase):
     @classmethod
     @patch('n6.base.queue.QueuedBase.preinit_hook')
     @patch('n6.base.queue.QueuedBase.parse_cmdline_args')
-    def setUp(self, cmdargs_mock, preinit_mock):
-        self._instance = MispCollector.__new__(MispCollector)
-        self._instance.config = self.mocked_config
+    def setUp(cls, cmdargs_mock, preinit_mock):
+        cls._instance = MispCollector.__new__(MispCollector)
+        cls._instance.config = cls.mocked_config
 
     def _init_class(self, mocked_state):
         with patch('n6.collectors.misp.datetime') as mocked_datetime_module, \
-                patch('n6.collectors.generic.BaseCollector.__init__',
+                    patch('n6.collectors.generic.BaseCollector.__init__',
                       return_value=None, create=True), \
-                patch('n6.collectors.generic.CollectorWithStateMixin.__init__',
+                    patch('n6.collectors.generic.CollectorWithStateMixin.__init__',
                       return_value=None, create=True), \
-                patch('n6.collectors.misp.PyMISP.__init__', return_value=None, create=True):
+                    patch('n6.collectors.misp.PyMISP.__init__', return_value=None, create=True):
             # a partial mock of the `datetime` module; the value of
             # the `datetime.datetime.now` is mocked, but it is still
             # able to return a `datetime.datetime` instance

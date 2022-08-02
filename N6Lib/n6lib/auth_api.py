@@ -81,9 +81,10 @@ RESOURCE_ID_TO_ACCESS_ZONE = {
     '/report/threats': 'threats',
     '/search/events': 'search',
 }
-ACCESS_ZONE_TO_RESOURCE_ID = dict(
-    (az, res_id)
-    for res_id, az in RESOURCE_ID_TO_ACCESS_ZONE.iteritems())
+ACCESS_ZONE_TO_RESOURCE_ID = {
+    az: res_id for res_id, az in RESOURCE_ID_TO_ACCESS_ZONE.iteritems()
+}
+
 ACCESS_ZONES = frozenset(ACCESS_ZONE_TO_RESOURCE_ID)
 
 _BOOL_TO_FLAG = {True: 'TRUE', False: 'FALSE'}
@@ -93,8 +94,6 @@ _FLAG_TO_BOOL = {f: b for b, f in _BOOL_TO_FLAG.iteritems()}
 
 class AuthAPIError(Exception):
     """Base class for AuthAPI-specific errors."""
-
-
 class AuthAPIUnauthenticatedError(AuthAPIError):
     """Raised when authentication failed."""
 
@@ -580,15 +579,18 @@ class AuthAPI(object):
                 name = get_attr_value(org, 'name', default=False)
                 if not name:
                     LOGGER.info('No name for org id %r', org_id)
-                if self._is_flag_enabled_for_org(org, org_id, 'n6stream-api-enabled'):
-                    n6stream_api_enabled = True
-                else:
-                    n6stream_api_enabled = False
-                if self._is_flag_enabled_for_org(
-                        org, org_id, 'n6email-notifications-business-days-only'):
-                    notifications_business_days_only = True
-                else:
-                    notifications_business_days_only = False
+                n6stream_api_enabled = bool(
+                    self._is_flag_enabled_for_org(
+                        org, org_id, 'n6stream-api-enabled'
+                    )
+                )
+
+                notifications_business_days_only = bool(
+                    self._is_flag_enabled_for_org(
+                        org, org_id, 'n6email-notifications-business-days-only'
+                    )
+                )
+
                 email_notifications_language = get_attr_value(org, 'n6email-notifications-language', default='pl')
 
                 notification_config[org_id] = {
@@ -800,8 +802,7 @@ class AuthAPI(object):
         # yields (<org id>, <subsource DN>, <access zone>, <is excluding?>) tuples
         for org_id, org in org_id_to_node.iteritems():
             self._check_org_length(org_id)
-            org_props = org.get('cn')
-            if org_props:
+            if org_props := org.get('cn'):
                 for access_zone in ACCESS_ZONES:
                     for off_suffix in ('', '-ex'):
                         channel = org_props.get(access_zone + off_suffix)
@@ -813,8 +814,7 @@ class AuthAPI(object):
 
             for org_group_refint in get_attr_value_list(org, 'n6org-group-refint'):
                 org_group = get_node(root_node, org_group_refint)
-                org_group_props = org_group.get('cn')
-                if org_group_props:
+                if org_group_props := org_group.get('cn'):
                     for access_zone in ACCESS_ZONES:
                         channel = org_group_props.get(access_zone)
                         for subsource_refint in (
@@ -826,12 +826,10 @@ class AuthAPI(object):
     def _iter_channel_subsource_refints(self, root_node, channel):
         # yields subsource DNs
         if channel:
-            for subsource_refint in get_attr_value_list(channel, 'n6subsource-refint'):
-                yield subsource_refint
+            yield from get_attr_value_list(channel, 'n6subsource-refint')
             for subsource_group_refint in get_attr_value_list(channel, 'n6subsource-group-refint'):
                 subsource_group = get_node(root_node, subsource_group_refint)
-                for subsource_refint in get_attr_value_list(subsource_group, 'n6subsource-refint'):
-                    yield subsource_refint
+                yield from get_attr_value_list(subsource_group, 'n6subsource-refint')
 
     def _get_condition_for_subsource_and_full_access_flag(self,
                                                           root_node,
@@ -874,18 +872,24 @@ class AuthAPI(object):
         for criteria_refint in get_attr_value_list(subsource,
                                                    'n6{0}-criteria-refint'.format(kind)):
             criteria_container_node = get_node(root_node, criteria_refint)
-            criteria_container_items = sorted(  # (sorting to make the order deterministic)
+            if criteria_container_items := sorted(  # (sorting to make the order deterministic)
                 (attr_name[2:], value_list)
-                for attr_name, value_list in criteria_container_node['attrs'].iteritems()
-                if attr_name in ('n6asn', 'n6cc', 'n6ip-network', 'n6category', 'n6name'))
-            if criteria_container_items:
-                crit_conditions = tuple(
-                    self._iter_crit_conditions(criteria_container_items, cond_builder))
-                if not crit_conditions:
+                for attr_name, value_list in criteria_container_node[
+                    'attrs'
+                ].iteritems()
+                if attr_name
+                in ('n6asn', 'n6cc', 'n6ip-network', 'n6category', 'n6name')
+            ):
+                if crit_conditions := tuple(
+                    self._iter_crit_conditions(
+                        criteria_container_items, cond_builder
+                    )
+                ):
+                    yield cond_builder.or_(*crit_conditions)
+                else:
                     raise AssertionError(
                         'criteria_container_items containing (only) empty value '
                         'lists??? ({!r})'.format(criteria_container_items))
-                yield cond_builder.or_(*crit_conditions)
 
     def _iter_crit_conditions(self, criteria_container_items, cond_builder):
         for name, value_list in criteria_container_items:
@@ -935,11 +939,9 @@ class AuthAPI(object):
         return (self._get_resource_limits_for_org(resource_id, org, org_id) is not None)
 
     def _get_resource_limits_for_org(self, resource_id, org, org_id):
-        org_props = org.get('cn')
-        if org_props:
+        if org_props := org.get('cn'):
             resource_ldap_cn = self._get_resource_ldap_cn(resource_id)
-            rest_api_resource = org_props.get(resource_ldap_cn)
-            if rest_api_resource:
+            if rest_api_resource := org_props.get(resource_ldap_cn):
                 try:
                     return self._make_resource_limits_dict(rest_api_resource)
                 except ValueError as exc:
@@ -949,7 +951,7 @@ class AuthAPI(object):
 
     def _get_resource_ldap_cn(self, resource_id):
         access_zone = RESOURCE_ID_TO_ACCESS_ZONE[resource_id]
-        return 'res-' + access_zone
+        return f'res-{access_zone}'
 
     def _make_resource_limits_dict(self, rest_api_resource):
         ## FIXME: queries_limit and results_limit should have some non-None defaults
@@ -974,14 +976,14 @@ class AuthAPI(object):
                                                       'n6request-required-parameters'))
         if all_parameters:
             if not required_parameters.issubset(all_parameters):
-                raise ValueError('n6request-required-parameters ({}) '
-                                 'is not a subset of n6request-parameters ({})'
-                                 .format(', '.join(sorted(map(repr, required_parameters))),
-                                         ', '.join(sorted(map(repr, all_parameters)))))
+                raise ValueError(
+                    f"n6request-required-parameters ({', '.join(sorted(map(repr, required_parameters)))}) is not a subset of n6request-parameters ({', '.join(sorted(map(repr, all_parameters)))})"
+                )
+
+        elif required_parameters:
+            raise ValueError('n6request-required-parameters are illegal when the '
+                             'n6request-parameters limitation is not specified')
         else:
-            if required_parameters:
-                raise ValueError('n6request-required-parameters are illegal when the '
-                                 'n6request-parameters limitation is not specified')
             # n6request-parameters not specified -> all parameters enabled (as optional ones)
             return None
         return {param: (param in required_parameters)
@@ -1102,9 +1104,7 @@ class InsideCriteriaResolver(object):
                 for key in cri.get(which_seq, ()):
                     mapping[key].append(org_id)
 
-            # URLs
-            url_seq = cri.get('url_seq')
-            if url_seq:
+            if url_seq := cri.get('url_seq'):
                 self._ids_and_urls.append((org_id, tuple(url_seq)))
 
         # [related to IPs]
@@ -1177,7 +1177,7 @@ class InsideCriteriaResolver(object):
         """
 
         client_org_ids = set()
-        urls_matched = dict()
+        urls_matched = {}
 
         # FQDN
         fqdn = record_dict.get('fqdn')

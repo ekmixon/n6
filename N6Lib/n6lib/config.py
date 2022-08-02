@@ -53,7 +53,7 @@ class ConfigError(Exception):
     """
 
     def __str__(self):
-        return '[configuration-related error] ' + super(ConfigError, self).__str__()
+        return f'[configuration-related error] {super(ConfigError, self).__str__()}'
 
 
 
@@ -499,8 +499,8 @@ class Config(DictWithSomeHooks):
         return converter
 
     # internal helper
-    def __strip_utf8_literal_eval(s):
-        return ast.literal_eval(s.decode('utf-8').strip())
+    def __strip_utf8_literal_eval(self):
+        return ast.literal_eval(self.decode('utf-8').strip())
 
 
     # public constant (should never be modified in-place!)
@@ -755,7 +755,7 @@ class Config(DictWithSomeHooks):
                 get_class_name(config_spec)))
         converters = dict(self.BASIC_CONVERTERS)
         if custom_converters is not None:
-            converters.update(custom_converters)
+            converters |= custom_converters
         if not callable(default_converter):
             default_converter = converters[default_converter]
         converters[None] = default_converter
@@ -879,10 +879,12 @@ class Config(DictWithSomeHooks):
                     continue
                 resultant_config_sect[opt_spec.name] = opt_value
 
-            free_opt_names = sorted(
-                input_opt_dict.viewkeys() -
-                set(opt_spec.name for opt_spec in sect_spec.opt_specs))
-            if free_opt_names:
+            if free_opt_names := sorted(
+                (
+                    input_opt_dict.viewkeys()
+                    - {opt_spec.name for opt_spec in sect_spec.opt_specs}
+                )
+            ):
                 if sect_spec.free_opts_allowed:
                     if some_declared_opts_are_absent:
                         # all conditions for the section
@@ -979,8 +981,9 @@ class Config(DictWithSomeHooks):
         sect_name_to_opt_dict = self._load_n6_config_files()
         self._override_config_values_by_cmdlines_arguments(sect_name_to_opt_dict)
         if required is not None:
-            missing_msg = self._get_error_msg_if_missing(sect_name_to_opt_dict, required)
-            if missing_msg:
+            if missing_msg := self._get_error_msg_if_missing(
+                sect_name_to_opt_dict, required
+            ):
                 LOGGER.error('%s', missing_msg)
                 sys.exit(_N6CORE_CONFIG_ERROR_MSG_PATTERN.format(missing_msg))
         self.update(
@@ -997,21 +1000,41 @@ class Config(DictWithSomeHooks):
             if sect_name not in sect_name_to_opt_dict:
                 missing_sect_names.append(sect_name)
             else:
-                for opt_name in options:
-                    if opt_name not in sect_name_to_opt_dict[sect_name]:
-                        missing_opt_locations.append("{0}.{1}".format(
-                            sect_name,
-                            opt_name))
+                missing_opt_locations.extend(
+                    "{0}.{1}".format(sect_name, opt_name)
+                    for opt_name in options
+                    if opt_name not in sect_name_to_opt_dict[sect_name]
+                )
+
         if missing_sect_names or missing_opt_locations:
-            missing_msg = '; '.join(filter(None, [
-                ("missing required config sections: {0}".format(
-                    ", ".join(sorted(map(ascii_str, missing_sect_names))))
-                 if missing_sect_names else None),
-                ("missing required config options: {0}".format(
-                    ", ".join(sorted(map(ascii_str, missing_opt_locations))))
-                 if missing_opt_locations else None)]))
-            return missing_msg
-        return None
+            return '; '.join(
+                filter(
+                    None,
+                    [
+                        (
+                            "missing required config sections: {0}".format(
+                                ", ".join(
+                                    sorted(map(ascii_str, missing_sect_names))
+                                )
+                            )
+                            if missing_sect_names
+                            else None
+                        ),
+                        (
+                            "missing required config options: {0}".format(
+                                ", ".join(
+                                    sorted(map(ascii_str, missing_opt_locations))
+                                )
+                            )
+                            if missing_opt_locations
+                            else None
+                        ),
+                    ],
+                )
+            )
+
+        else:
+            return None
 
     #
     # Generic helpers
@@ -1029,8 +1052,7 @@ class Config(DictWithSomeHooks):
             return sect_name_to_opt_dict
 
         ok_config_files = config_parser.read(config_files)
-        err_config_files = set(config_files).difference(ok_config_files)
-        if err_config_files:
+        if err_config_files := set(config_files).difference(ok_config_files):
             LOGGER.warning(
                 'Config files that could not be read '
                 '(check their permission modes?): %s', ', '.join(
@@ -1069,10 +1091,15 @@ class Config(DictWithSomeHooks):
         """
         config_files = []
         for directory, _, fnames in os.walk(path):
-            for fname in fnames:
-                if (fname.endswith(".conf") and
-                      not fname.startswith(("logging.", "logging-"))):
-                    config_files.append(osp.join(directory, fname))
+            config_files.extend(
+                osp.join(directory, fname)
+                for fname in fnames
+                if (
+                    fname.endswith(".conf")
+                    and not fname.startswith(("logging.", "logging-"))
+                )
+            )
+
         return sorted(config_files)
 
     def _override_config_values_by_cmdlines_arguments(self, config_dir):
@@ -2020,11 +2047,9 @@ class ConfigMixin(object):
         args, kwargs = self.__get_args_kwargs(settings, **format_kwargs)
         config_group = self.__get_config_group()
         if config_group is None:
-            config_section = Config.section(*args, **kwargs)
-        else:
-            full_config = Config(*args, **kwargs)
-            config_section = full_config[config_group]
-        return config_section
+            return Config.section(*args, **kwargs)
+        full_config = Config(*args, **kwargs)
+        return full_config[config_group]
 
 
     def is_config_spec_or_group_declared(self):
@@ -2070,13 +2095,13 @@ class ConfigMixin(object):
                     '(to be non-None) rather than `config_spec`')
             config_spec_pattern = getattr(self, 'config_spec_pattern', '') or ''
             config_spec = config_spec_pattern.format(**format_kwargs)
-        else:
-            if getattr(self, 'config_spec_pattern', None) is not None:
-                raise ValueError(
-                    'when *no* config spec format kwargs are specified '
-                    'the `config_spec` attribute is expected '
-                    '(to be non-None) rather than `config_spec_pattern`')
+        elif getattr(self, 'config_spec_pattern', None) is None:
             config_spec = getattr(self, 'config_spec', '') or ''
+        else:
+            raise ValueError(
+                'when *no* config spec format kwargs are specified '
+                'the `config_spec` attribute is expected '
+                '(to be non-None) rather than `config_spec_pattern`')
         if not isinstance(config_spec, str):
             raise TypeError('config_spec must be str, not {0}'.format(
                 get_class_name(config_spec)))
@@ -2133,12 +2158,12 @@ class ConfigMixin(object):
             else:
                 assert conf_spec_data.contains(config_group)
                 assert isinstance(sect_spec, _SectSpec)
-                additional_required_opts = sorted(
+                if additional_required_opts := sorted(
                     set(config_required).difference(
-                            opt.name
-                            for opt in sect_spec.opt_specs),
-                    key=config_required.index)
-                if additional_required_opts:
+                        opt.name for opt in sect_spec.opt_specs
+                    ),
+                    key=config_required.index,
+                ):
                     sect_spec = sect_spec._replace(
                         opt_specs=sect_spec.opt_specs + [
                             _OptSpec(name=str(opt_name),
@@ -2175,7 +2200,7 @@ class ConfigMixin(object):
     @staticmethod
     def __get_sect_name_to_spec(conf_spec_data):
         all_sect_specs = conf_spec_data.get_all_sect_specs()
-        return dict((spec.name, spec) for spec in all_sect_specs)
+        return {spec.name: spec for spec in all_sect_specs}
 
 
 
@@ -3385,8 +3410,7 @@ class ConfigString(str):
                 continue
             non_blank_or_comment_encountered = True
 
-            sect_match = cls._SECT_BEG_REGEX.search(li)
-            if sect_match:
+            if sect_match := cls._SECT_BEG_REGEX.search(li):
                 # this line is a new section header
                 sect_name_to_index_data[cur_sect_name].complete(end=i)
                 cur_sect_name = sect_match.group('sect_name')
@@ -3395,25 +3419,23 @@ class ConfigString(str):
                         'duplicate section name {0!r}'.format(cur_sect_name))
                 sect_name_to_index_data[cur_sect_name] = cls._SectIndexData(beg=i)
 
-            else:
-                opt_match = cls._OPT_BEG_REGEX.search(li)
-                if opt_match:
-                    # this line is an option spec (e.g., `name=value`...)
-                    opt_name = opt_match.group('opt_name')
-                    opt_name = opt_name.lower()  # <- to mimic ConfigParser stuff
-                    sect_idata = sect_name_to_index_data[cur_sect_name]
-                    if sect_idata.contains_opt_name(opt_name):
-                        raise ValueError(
-                            'duplicate option name {0!r} in section {1!r}'
-                            .format(opt_name, cur_sect_name))
-                    sect_idata.init_opt(opt_name, beg=i)
-
-                else:
+            elif opt_match := cls._OPT_BEG_REGEX.search(li):
+                # this line is an option spec (e.g., `name=value`...)
+                opt_name = opt_match.group('opt_name')
+                opt_name = opt_name.lower()  # <- to mimic ConfigParser stuff
+                sect_idata = sect_name_to_index_data[cur_sect_name]
+                if sect_idata.contains_opt_name(opt_name):
                     raise ValueError(
-                        'config line {0!r} is not valid (note that '
-                        'section/option names that are empty or '
-                        'contain whitespace characters are '
-                        'not supported)'.format(li))
+                        'duplicate option name {0!r} in section {1!r}'
+                        .format(opt_name, cur_sect_name))
+                sect_idata.init_opt(opt_name, beg=i)
+
+            else:
+                raise ValueError(
+                    'config line {0!r} is not valid (note that '
+                    'section/option names that are empty or '
+                    'contain whitespace characters are '
+                    'not supported)'.format(li))
 
         sect_name_to_index_data[cur_sect_name].complete(end=len(lines))
 

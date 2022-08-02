@@ -78,7 +78,7 @@ class FieldForN6(Field):
         try:
             (main_qualifier,
              additional_info) = self._get_main_qualifier_and_additional_info(arg_value)
-            ai_validator_meth_name = '_validate_{}_additional_info_items'.format(arg_name)
+            ai_validator_meth_name = f'_validate_{arg_name}_additional_info_items'
             ai_validator_meth = getattr(self, ai_validator_meth_name)
             ai_validator_meth(additional_info)
         except ValueError as exc:
@@ -88,7 +88,7 @@ class FieldForN6(Field):
                     arg_name,
                     arg_value,
                     exc))
-        additional_info_attr_name = arg_name + '_additional_info'
+        additional_info_attr_name = f'{arg_name}_additional_info'
         setattr(self, additional_info_attr_name, additional_info)
         super(FieldForN6, self).handle_in_arg(arg_name, main_qualifier)
 
@@ -107,9 +107,9 @@ class FieldForN6(Field):
             # (as in n6sdk)
             if arg_value is not None and arg_value not in VALID_MAIN_QUALIFIERS:
                 raise ValueError(
-                    "if not None it should be a valid main qualifier "
-                    "(one of: {}) or a set/sequence containing it".format(
-                        ', '.join(sorted(map(repr, VALID_MAIN_QUALIFIERS)))))
+                    f"if not None it should be a valid main qualifier (one of: {', '.join(sorted(map(repr, VALID_MAIN_QUALIFIERS)))}) or a set/sequence containing it"
+                )
+
             main_qualifier = arg_value
             additional_info = frozenset()
         assert main_qualifier is None and not additional_info or (
@@ -125,12 +125,14 @@ class FieldForN6(Field):
         except ValueError:
             if found_main_qual:
                 raise ValueError(
-                    "multiple main qualifiers: {} (expected only one)".format(
-                        ', '.join(sorted(map(repr, found_main_qual)))))
+                    f"multiple main qualifiers: {', '.join(sorted(map(repr, found_main_qual)))} (expected only one)"
+                )
+
             else:
                 raise ValueError(
-                    "no main qualifier (expected one of: {})".format(
-                        ', '.join(sorted(map(repr, VALID_MAIN_QUALIFIERS)))))
+                    f"no main qualifier (expected one of: {', '.join(sorted(map(repr, VALID_MAIN_QUALIFIERS)))})"
+                )
+
         additional_info = frozenset(arg_value) - found_main_qual
         return main_qualifier, additional_info
 
@@ -144,17 +146,17 @@ class FieldForN6(Field):
         self._ensure_only_access_qualifiers(additional_info)
 
     def _ensure_only_access_qualifiers(self, a_set):
-        illegal_items = a_set - VALID_ACCESS_QUALIFIERS
-        if illegal_items:
-            raise ValueError('illegal item(s): {}'.format(
-                ', '.join(sorted(map(repr, illegal_items)))))
+        if illegal_items := a_set - VALID_ACCESS_QUALIFIERS:
+            raise ValueError(
+                f"illegal item(s): {', '.join(sorted(map(repr, illegal_items)))}"
+            )
 
     def _ensure_no_multiple_access_qualifiers(self, a_set):
         found_access_qual = a_set & VALID_ACCESS_QUALIFIERS
         if len(found_access_qual) > 1:
             raise ValueError(
-                "multiple access qualifiers: {} (expected only one)".format(
-                    ', '.join(sorted(map(repr, found_access_qual)))))
+                f"multiple access qualifiers: {', '.join(sorted(map(repr, found_access_qual)))} (expected only one)"
+            )
 
 
 # n6lib versions of field classes defined in SDK:
@@ -318,9 +320,10 @@ class URLBase64FieldForN6(UnicodeField, FieldForN6):
             value = string_as_bytes(value)
             value = base64.urlsafe_b64decode(value)
         except (ValueError, TypeError):  # (TypeError is raised on incorrect Base64 padding)
-            raise FieldValueError(public_message=(
-                '"{}" is not a valid URL-safe-Base64-encoded string '
-                '[see: RFC 4648, section 5]'.format(ascii_str(value))))
+            raise FieldValueError(
+                public_message=f'"{ascii_str(value)}" is not a valid URL-safe-Base64-encoded string [see: RFC 4648, section 5]'
+            )
+
         return value
 
 
@@ -384,12 +387,21 @@ class EnrichedFieldForN6(FieldForN6):
 
     def clean_result_value(self, value):
         enriched_keys_raw, ip_to_enriched_address_keys_raw = value
-        enriched_keys = sorted(set(
-            self._toplevel_key_field.clean_result_value(name)
-            for name in enriched_keys_raw))
+        enriched_keys = sorted(
+            {
+                self._toplevel_key_field.clean_result_value(name)
+                for name in enriched_keys_raw
+            }
+        )
+
         ip_to_enriched_address_keys = {
-            self._ipv4_field.clean_result_value(ip): sorted(set(
-                self._address_key_field.clean_result_value(name)
-                for name in addr_keys))
-            for ip, addr_keys in ip_to_enriched_address_keys_raw.iteritems()}
+            self._ipv4_field.clean_result_value(ip): sorted(
+                {
+                    self._address_key_field.clean_result_value(name)
+                    for name in addr_keys
+                }
+            )
+            for ip, addr_keys in ip_to_enriched_address_keys_raw.iteritems()
+        }
+
         return (enriched_keys, ip_to_enriched_address_keys)

@@ -442,15 +442,17 @@ class TestN6RegistrationView(RequestHelperMixin, DBConnectionPatchMixin, unittes
         )
 
     @paramseq
-    def ok_cases(cls):
+    def ok_cases(self):
         for str_values in (True, False):
             for whitespace_surrounded_values in (True, False):
                 for unpacked_single_values in (True, False):
-                    for request_params, expected_db_obj in cls.basic_cases():
+                    for request_params, expected_db_obj in self.basic_cases():
                         if whitespace_surrounded_values:
                             request_params = {
-                                key: [u' \t {} \n '.format(v) for v in val]
-                                for key, val in request_params.iteritems()}
+                                key: [f' \t {v} \n ' for v in val]
+                                for key, val in request_params.iteritems()
+                            }
+
                         if str_values:
                             request_params = {
                                 key: [v.encode('utf-8') for v in val]
@@ -461,13 +463,11 @@ class TestN6RegistrationView(RequestHelperMixin, DBConnectionPatchMixin, unittes
                                       else val)
                                 for key, val in request_params.iteritems()}
                         yield param(
-                                request_params=request_params,
-                                expected_db_obj=expected_db_obj,
-                            ).label('ok:{}{}{}/{}'.format(
-                                's' if str_values else '-',
-                                'u' if unpacked_single_values else '-',
-                                'w' if whitespace_surrounded_values else '-',
-                                len(request_params)))
+                            request_params=request_params,
+                            expected_db_obj=expected_db_obj,
+                        ).label(
+                            f"ok:{'s' if str_values else '-'}{'u' if unpacked_single_values else '-'}{'w' if whitespace_surrounded_values else '-'}/{len(request_params)}"
+                        )
 
     @foreach(ok_cases)
     def test_ok(self, request_params, expected_db_obj):

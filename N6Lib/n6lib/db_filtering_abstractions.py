@@ -44,9 +44,7 @@ class BaseCond(object):
         arg_reprs.extend(
             '{}={!r}'.format(k, v)
             for k, v in sorted(self.kwargs.iteritems()))
-        return '{}({})'.format(
-            self.__class__.__name__,
-            ', '.join(arg_reprs))
+        return f"{self.__class__.__name__}({', '.join(arg_reprs)})"
 
     def __ne__(self, other):
         return not self == other
@@ -164,10 +162,7 @@ class PredicateColumnCond(_PredicateCondMixin, AbstractColumnCond):
                     'values being None are not supported (None found '
                     'for column {!r} in the record: {!r})'.format(
                         column_name, record))
-            if reverse_operands:
-                return op_func(op_arg, val)
-            else:
-                return op_func(val, op_arg)
+            return op_func(op_arg, val) if reverse_operands else op_func(val, op_arg)
 
         return _predicate
 
@@ -1344,25 +1339,19 @@ class RecordFacadeForPredicates(object):
         values = [
             ip_str_to_int(addr['ip'])
             for addr in self._underlying_dict.get('address', ())]
-        if not values:
-            return default
-        return _ComparableMultiValue(values)
+        return _ComparableMultiValue(values) if values else default
 
     def _get_asn_value(self, default):
         values = tuple(filter(None, (
             addr.get('asn')
             for addr in self._underlying_dict.get('address', ()))))
-        if not values:
-            return default
-        return _ComparableMultiValue(values)
+        return _ComparableMultiValue(values) if values else default
 
     def _get_cc_value(self, default):
         values = tuple(filter(None, (
             addr.get('cc')
             for addr in self._underlying_dict.get('address', ()))))
-        if not values:
-            return default
-        return _ComparableMultiValue(values)
+        return _ComparableMultiValue(values) if values else default
 
 
 class _ComparableMultiValue(object):

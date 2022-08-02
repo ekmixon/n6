@@ -586,17 +586,28 @@ class TestFilter(unittest.TestCase):
                                 'ip_min_max_seq': [(0, 4194303),
                                                    (4294901760, 4294901792)], }]
 
-        body = {"category": "bots", "restriction": "public", "confidence": "medium",
-                "sha1": "023a00e7c2ef04ee5b0f767ba73ee39734323432", "name": "virut",
-                "proto": "tcp", "address": [{"cc": "XX", "ip": "1.1.1.1", "asn": "1"}],
-                "fqdn": "domain.com", "url": "http://onet.pl", "source": "hpfeeds.dionaea",
-                "time": "2013-07-01 20:37:20", "dport": "445",
-                "rid": "023a00e7c2ef04ee5b0f767ba73ee397",
-                "sport": "2147", "dip": "10.28.71.43", "id": "023a00e7c2ef04ee5b0f767ba73ee397"}
-
         # test_all_fields
         self.auth_api_mock._get_inside_criteria.return_value = test_criteria_local
-        body['fqdn'] = 'onet.pl'
+        body = {
+            "category": "bots",
+            "restriction": "public",
+            "confidence": "medium",
+            "sha1": "023a00e7c2ef04ee5b0f767ba73ee39734323432",
+            "name": "virut",
+            "proto": "tcp",
+            "address": [{"cc": "XX", "ip": "1.1.1.1", "asn": "1"}],
+            "fqdn": "domain.com",
+            "url": "http://onet.pl",
+            "source": "hpfeeds.dionaea",
+            "time": "2013-07-01 20:37:20",
+            "dport": "445",
+            "rid": "023a00e7c2ef04ee5b0f767ba73ee397",
+            "sport": "2147",
+            "dip": "10.28.71.43",
+            "id": "023a00e7c2ef04ee5b0f767ba73ee397",
+            'fqdn': 'onet.pl',
+        }
+
         body['address'][0]['cc'] = 'GH'
         body['address'][0]['asn'] = '1234'
         body['address'][0]['ip'] = '73.2.233.171'

@@ -101,8 +101,7 @@ class _AbstractSearchRawItem(object):
     @classmethod
     def rdn(cls, *args, **kwargs):
         dn = cls.dn(*args, **kwargs)
-        rdn = '='.join(cls._dn_to_rdn_tuple(dn))
-        return rdn
+        return '='.join(cls._dn_to_rdn_tuple(dn))
 
     @classmethod
     def rdn_val(cls, *args, **kwargs):
@@ -126,9 +125,7 @@ class _WithChannelMixIn(object):
 
     @classmethod
     def channel(cls, o_go_format_arg, cn, attrs=None):
-        if not any(cn == (az + suffix)
-                   for az in ACCESS_ZONES
-                       for suffix in ('', '-ex')):
+        if all(cn != az + suffix for az in ACCESS_ZONES for suffix in ('', '-ex')):
             raise ValueError('illegal cn given: {!r}'.format(cn))
         return _RC(cls.dn(o_go_format_arg), cn, attrs)
 
@@ -161,8 +158,7 @@ class _O(_WithChannelMixIn, _AbstractSearchRawItem):
 
     @classmethod
     def res(cls, o_format_arg, cn, attrs=None):
-        if not any(cn == 'res-' + az
-                   for az in ACCESS_ZONES):
+        if all(cn != f'res-{az}' for az in ACCESS_ZONES):
             raise ValueError('illegal cn given: {!r}'.format(cn))
         return _RC(cls.dn(o_format_arg), cn, attrs)
 
@@ -205,7 +201,7 @@ class _S(_AbstractSearchRawItem):
     obj_classes = ['n6Source']
 
     def __new__(cls, source_id, attrs=None):
-        anon = ['anon-{}'.format(source_id)]
+        anon = [f'anon-{source_id}']
         if attrs is None:
             attrs = {'n6anonymized': anon}
         else:

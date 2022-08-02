@@ -159,9 +159,11 @@ class Test__n6NormalizedData(unittest.TestCase):
 
     def _get_sql_repr(self, col):
         type_name = (
-            str(col.type) if not isinstance(col.type, sqlalchemy.types.Enum)
-            else 'ENUM({0})'.format(','.join(
-                    "'{0}'".format(e) for e in col.type.enums)))
+            'ENUM({0})'.format(','.join("'{0}'".format(e) for e in col.type.enums))
+            if isinstance(col.type, sqlalchemy.types.Enum)
+            else str(col.type)
+        )
+
         r = '{0} {1}'.format(col.name, type_name)
         if isinstance(col.type, IPAddress):
             self.assertTrue(col.type.impl.mapping['mysql'].unsigned)

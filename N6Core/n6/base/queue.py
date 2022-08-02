@@ -212,8 +212,7 @@ class QueuedBase(object):
         """
         arg_parser = self.get_arg_parser()
         cmdline_args, unknown = arg_parser.parse_known_args()
-        illegal_n6_args = [arg for arg in unknown if re.match(r'\-+n6', arg)]
-        if illegal_n6_args:
+        if illegal_n6_args := [arg for arg in unknown if re.match(r'\-+n6', arg)]:
             arg_parser.error('unrecognized n6-specific arguments: {0}'.format(
                 ', '.join(illegal_n6_args)))
         return cmdline_args
@@ -549,12 +548,10 @@ class QueuedBase(object):
         Call to close [...] by issuing the Channel.Close RPC command.
         """
         LOGGER.info('Closing the channels')
-        if self._channel_in is not None:
-            if self._channel_in.is_open:
-                self._channel_in.close()
-        if self._channel_out is not None:
-            if self._channel_out.is_open:
-                self._channel_out.close()
+        if self._channel_in is not None and self._channel_in.is_open:
+            self._channel_in.close()
+        if self._channel_out is not None and self._channel_out.is_open:
+            self._channel_out.close()
 
     def close_channel(self, channel_mode):
         """
@@ -563,7 +560,7 @@ class QueuedBase(object):
         Args:
             `channel_mode`: type of channel to close - "in" or "out"
         """
-        channel = getattr(self, "_channel_%s" % channel_mode)
+        channel = getattr(self, f"_channel_{channel_mode}")
         if channel.is_open:
             channel.close()
 
@@ -1480,7 +1477,7 @@ class QueuedBase(object):
         yield_time_interval_threshold = self._get_yield_time_interval_threshold()
         yielding_allowed = True
         concrete_publishing_generator = self.publish_iteratively()
-        try:
+        with contextlib.suppress(self.__PublishingGeneratorCleanExit):
             try:
                 yield_time = time.time()
                 for marker in concrete_publishing_generator:
@@ -1514,8 +1511,6 @@ class QueuedBase(object):
                         # unconditionally -- to make it slightly more probable
                         # that the sent data have actually left the machine.
                         yield
-        except self.__PublishingGeneratorCleanExit:
-            pass
         if not self._is_buffer_empty(outbound_buffer):
             raise n6AMQPCommunicationError(
                 "the publishing generator (the main internal component "

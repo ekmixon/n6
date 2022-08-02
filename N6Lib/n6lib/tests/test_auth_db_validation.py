@@ -66,21 +66,7 @@ class TestValidators(unittest.TestCase):
 
     value_too_long_pattern = r'\b[Ll]ength of .+ is greater than\b'
 
-    @foreach(
-        'example.com',
-        'example',
-        '  ex-ampl_e.co1m',
-        'EXAMPLE.COM',
-        u'example.com',
-        # max length of a single label (segment of a domain name)
-        '{}'.format('a' * 63),
-        u'{}'.format(u'b' * 63),
-        # max length of a domain name
-        '{}'.format('example.'*31 + 'foo.com'),
-        u'{}'.format(u'example.'*31 + u'foo.com'),
-        'łódź.example.com',   # will be IDNA-encoded...
-        u'łódź.example.com',  # will be IDNA-encoded...
-    )
+    @foreach('example.com', 'example', '  ex-ampl_e.co1m', 'EXAMPLE.COM', u'example.com', f"{'a' * 63}", f"{u'b' * 63}", f"{'example.'*31 + 'foo.com'}", f"{u'example.'*31 + u'foo.com'}", 'łódź.example.com', u'łódź.example.com')
     @foreach(
         InsideFilterFQDN,
         RegistrationRequestFQDN,
@@ -88,15 +74,7 @@ class TestValidators(unittest.TestCase):
     def test_fqdn(self, model, val):
         self._test_proper_values(model, {'fqdn': val}, expecting_stripped_string=True)
 
-    @foreach(
-        'example.com',
-        'example',
-        'ex-ampl_e.co1m',
-        '    EXAMPLE.COM             ',
-        u'example.com',
-        '{}'.format('a' * CLIENT_ORGANIZATION_MAX_LENGTH),
-        u'{}'.format(u'b' * CLIENT_ORGANIZATION_MAX_LENGTH),
-    )
+    @foreach('example.com', 'example', 'ex-ampl_e.co1m', '    EXAMPLE.COM             ', u'example.com', f"{'a' * CLIENT_ORGANIZATION_MAX_LENGTH}", f"{u'b' * CLIENT_ORGANIZATION_MAX_LENGTH}")
     @foreach(
         Org,
         RegistrationRequest,

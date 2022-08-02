@@ -17,7 +17,7 @@ from n6lib.argument_parser import N6ArgumentParser, N6ConfigValuesAction
 class TestN6ConfigValuesAction(unittest.TestCase):
 
     @paramseq
-    def _test_cases(cls):
+    def _test_cases(self):
         yield param(data=None, expected=TypeError)
         yield param(data=['section1.option1=value1', 'section1.option2=value2',
                           'section2.option1=value3'],

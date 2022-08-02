@@ -119,7 +119,7 @@ class _DropDatabaseMixin(object):
     def drop_db_if_exists(self, secondary_db_engine):
         self.msg('Dropping auth database if it exists...')
         quoted_db_name = self.quote_sql_identifier(self.db_name)
-        secondary_db_engine.execute('DROP DATABASE IF EXISTS {}'.format(quoted_db_name))
+        secondary_db_engine.execute(f'DROP DATABASE IF EXISTS {quoted_db_name}')
 
 
 class CreateAndInitializeAuthDB(_DropDatabaseMixin, _BaseAuthDBScript):
@@ -153,8 +153,8 @@ class CreateAndInitializeAuthDB(_DropDatabaseMixin, _BaseAuthDBScript):
     def create_db(self, secondary_db_engine):
         self.msg('Creating new auth database...')
         quoted_db_name = self.quote_sql_identifier(self.db_name)
-        sql_raw = ('CREATE DATABASE {} '
-                   'CHARACTER SET :charset COLLATE :collate'.format(quoted_db_name))
+        sql_raw = f'CREATE DATABASE {quoted_db_name} CHARACTER SET :charset COLLATE :collate'
+
         sql = sqlalchemy.text(sql_raw).bindparams(
             charset=(MYSQL_CHARSET),
             collate=(MYSQL_COLLATE))
@@ -167,7 +167,7 @@ class CreateAndInitializeAuthDB(_DropDatabaseMixin, _BaseAuthDBScript):
     def insert_criteria_categories(self):
         self.msg('Inserting `criteria_category` records...')
         for category in CATEGORY_ENUMS:
-            self.msg_sub('{} "{}"'.format(CriteriaCategory.__name__, category))
+            self.msg_sub(f'{CriteriaCategory.__name__} "{category}"')
             self.db_session.add(CriteriaCategory(category=category))
 
 
@@ -245,16 +245,15 @@ class PopulateAuthDB(_BaseAuthDBScript):
                                   'restricted and deanonymized data); note that '
                                   'you still need to grant access to some access '
                                   'zones (see the options: -i, -t and -s)'))
-        parser.add_argument('-S', '--sources',
-                            metavar='SOURCE',
-                            nargs='*',
-                            default=cls.DEFAULT_SOURCES,
-                            help=('data source identifiers for whom general '
-                                  'access subsources shall be provided, to whom '
-                                  'access shall be granted; defaults are: {} '
-                                  '(note that by specifying this option you '
-                                  'completely override them)'.format(
-                                      ' '.join(cls.DEFAULT_SOURCES))))
+        parser.add_argument(
+            '-S',
+            '--sources',
+            metavar='SOURCE',
+            nargs='*',
+            default=cls.DEFAULT_SOURCES,
+            help=f"data source identifiers for whom general access subsources shall be provided, to whom access shall be granted; defaults are: {' '.join(cls.DEFAULT_SOURCES)} (note that by specifying this option you completely override them)",
+        )
+
         parser.add_argument('-i', '--access-to-inside',
                             action='store_true',
                             help=('grant (to the added organization) access to '
@@ -324,7 +323,7 @@ class PopulateAuthDB(_BaseAuthDBScript):
             self.db_session.add_all(categories)
 
     def _generate_sources(self):
-        for i, source_id in enumerate(self.source_ids):
+        for source_id in self.source_ids:
             source = self.db_session.query(Source).get(source_id)
             if source is None:
                 source = Source(
@@ -336,7 +335,7 @@ class PopulateAuthDB(_BaseAuthDBScript):
     def _generate_subsources(self, sources, org):
         for source in sources:
             source_id = source.source_id
-            label = 'general access to ' + source_id
+            label = f'general access to {source_id}'
             subsource = self.db_session.query(Subsource).get(label)
             if subsource is None:
                 subsource = Subsource(label=label, source=source)
@@ -357,9 +356,10 @@ class PopulateAuthDB(_BaseAuthDBScript):
             criteria_category = self.db_session.query(CriteriaCategory).get(category)
             if criteria_category is None:
                 criteria_category = CriteriaCategory(category=category)
-                self.msg_sub('[previously not added] {} "{}"'.format(
-                    CriteriaCategory.__name__,
-                    criteria_category))
+                self.msg_sub(
+                    f'[previously not added] {CriteriaCategory.__name__} "{criteria_category}"'
+                )
+
                 yield criteria_category
 
     def _apply_org_permissions(self, org):

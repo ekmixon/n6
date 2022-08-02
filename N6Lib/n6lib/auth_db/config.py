@@ -117,8 +117,8 @@ class SQLAuthDBConfigMixin(ConfigMixin):
         if config_section is None:
             config_section = self.default_config_section
         self.config_section = config_section
-        self.config_section_session_variables = config_section + '_session_variables'
-        self.config_section_connection_pool = config_section + '_connection_pool'
+        self.config_section_session_variables = f'{config_section}_session_variables'
+        self.config_section_connection_pool = f'{config_section}_connection_pool'
 
     def configure_db(self):
         self.engine = self.make_db_engine()
@@ -271,13 +271,13 @@ class SQLAuthDBConnector(SQLAuthDBConfigMixin):
                                             db_name=db_name,
                                             db_user=db_user,
                                             db_password=db_password):
-            password_part = (':{}'.format(db_password) if db_password else '')
+            password_part = f':{db_password}' if db_password else ''
             option_val = 'mysql+mysqldb://{user}{password_part}@{host}/{name}'.format(
                 user=db_user,
                 password_part=password_part,
                 host=db_host,
                 name=db_name)
-            option_key = '{}.url'.format(config_section)
+            option_key = f'{config_section}.url'
             if settings is None:
                 settings = {
                     option_key: option_val,
@@ -292,8 +292,9 @@ class SQLAuthDBConnector(SQLAuthDBConfigMixin):
     def _verify_args_for_connection(self, **kwargs):
         if kwargs['db_host'] and kwargs['db_name'] and kwargs['db_user']:
             return True
-        incorrectly_specified_args = {name: val for name, val in kwargs.iteritems() if val}
-        if incorrectly_specified_args:
+        if incorrectly_specified_args := {
+            name: val for name, val in kwargs.iteritems() if val
+        }:
             args_repr = ', '.join('{}={!r}'.format(name, val)
                                   for name, val in incorrectly_specified_args.iteritems())
             raise TypeError(

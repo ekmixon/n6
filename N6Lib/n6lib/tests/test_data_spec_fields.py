@@ -85,13 +85,16 @@ ALL_NAMES_OF_FIELD_CLASSES_FOR_N6 = (
 def _make_sdk_based_test_cls(field_cls_name):
     field_cls = getattr(n6_fields, field_cls_name)
     corresponding_sdk_name = field_cls_name[:-len('ForN6')]
-    sdk_test_cls = getattr(sdk_tests, 'Test' + corresponding_sdk_name)
-    assert sdk_test_cls.__name__ == 'Test' + corresponding_sdk_name, 'bug in the test'
+    sdk_test_cls = getattr(sdk_tests, f'Test{corresponding_sdk_name}')
+    assert (
+        sdk_test_cls.__name__ == f'Test{corresponding_sdk_name}'
+    ), 'bug in the test'
+
 
     class test_cls(sdk_test_cls):
         CLASS = field_cls
 
-    test_cls.__name__ = test_cls_name = sdk_test_cls.__name__ + 'ForN6'
+    test_cls.__name__ = test_cls_name = f'{sdk_test_cls.__name__}ForN6'
     return test_cls_name, test_cls
 
 
@@ -356,8 +359,7 @@ class TestURLBase64FieldForN6(FieldTestMixin, unittest.TestCase):
         )
 
     def cases__clean_result_value(self):
-        for c in self.cases__clean_param_value():
-            yield c
+        yield from self.cases__clean_param_value()
         yield case(
             given=123,
             expected=TypeError,

@@ -74,13 +74,16 @@ class EmailCustomizedField(EmailSimplifiedField):
 
     def _validate_value(self, value):
         forbidden_characters = self._get_additionally_forbidden_characters()
-        illegal_characters = forbidden_characters.intersection(value)
-        if illegal_characters:
+        if illegal_characters := forbidden_characters.intersection(value):
             raise FieldValueError(
                 public_message='"{value}" contains illegal character(s): {chars}.'.format(
                     value=ascii_str(value),
-                    chars=', '.join(sorted("'{}'".format(ascii_str(ch))
-                                           for ch in illegal_characters))))
+                    chars=', '.join(
+                        sorted(f"'{ascii_str(ch)}'" for ch in illegal_characters)
+                    ),
+                )
+            )
+
         super(EmailCustomizedField, self)._validate_value(value)
 
     def _get_additionally_forbidden_characters(self):
@@ -148,11 +151,10 @@ class DateTimeCustomizedField(DateTimeField):
         value = value.replace(microsecond=0)
         # do not accept times that are *not* representable as UNIX timestamps
         if value < self.min_datetime:
-            raise FieldValueError(public_message=(
-                'The given date+time {} is older '
-                'than the required minimum {}'.format(
-                    value.isoformat(),
-                    self.min_datetime.isoformat())))
+            raise FieldValueError(
+                public_message=f'The given date+time {value.isoformat()} is older than the required minimum {self.min_datetime.isoformat()}'
+            )
+
         return value
 
 

@@ -39,7 +39,7 @@ from n6lib.const import (
 #
 # Logging preparation'n'configuration
 
-def early_Formatter_class_monkeypatching():  # called in n6lib/__init__.py
+def early_Formatter_class_monkeypatching():    # called in n6lib/__init__.py
     """
     Do logging.Formatter monkey-patching to use *always* UTC time.
     """
@@ -54,12 +54,7 @@ def early_Formatter_class_monkeypatching():  # called in n6lib/__init__.py
         else:
             t = strftime("%Y-%m-%d %H:%M:%S", ct)
             s = "%s,%03d" % (t, record.msecs)
-        if converter is gmtime:
-            # the ' UTC' suffix is added *only* if it
-            # is certain that we have a UTC time
-            s += ' UTC'
-        else:
-            s += ' <UNCERTAIN TIMEZONE>'
+        s += ' UTC' if converter is gmtime else ' <UNCERTAIN TIMEZONE>'
         return s
 
     logging.Formatter.converter = gmtime
@@ -319,9 +314,10 @@ class AMQPHandler(logging.Handler):
                 # => attach (as the `msg_skipped_to_count` record
                 #    attribute) the info about skipped messages (if
                 #    any) and update/flush the state mappings
-                msg_skipped_to_count = dict(
-                    (m, c) for m, c in msg_to_count.iteritems()
-                    if c > 0)
+                msg_skipped_to_count = {
+                    m: c for m, c in msg_to_count.iteritems() if c > 0
+                }
+
                 if msg_skipped_to_count:
                     record.msg_skipped_to_count = msg_skipped_to_count
                 loggername_to_window_and_msg_to_count[loggername] = cur_window, msg_to_count
@@ -559,7 +555,4 @@ class _LogRecordCuttingProxy(object):
             msg_length_limit = self.__msg_length_limit
             if len(record.message) > msg_length_limit:
                 record.message = record.message[:msg_length_limit] + self.__cut_indicator
-        if name == '__dict__':
-            return record.__dict__
-        else:
-            return record.message
+        return record.__dict__ if name == '__dict__' else record.message

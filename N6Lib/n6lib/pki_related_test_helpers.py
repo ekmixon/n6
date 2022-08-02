@@ -173,7 +173,7 @@ class _LoadCertMetadataMixin(object):
             usage += 1
         if 'SSL server : Yes' in purposes:
             usage += 2
-        assert usage in (1, 3)
+        assert usage in {1, 3}
         return usage
 
     @classmethod

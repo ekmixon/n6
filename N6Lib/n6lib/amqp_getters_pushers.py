@@ -128,7 +128,7 @@ class BaseAMQPTool(object):
 
     def _make_connection(self):
         exc = None
-        for attempt in xrange(self.CONNECTION_ATTEMPTS):
+        for _ in xrange(self.CONNECTION_ATTEMPTS):
             parameters = pika.ConnectionParameters(**self._connection_params_dict)
             try:
                 return pika.BlockingConnection(parameters)
@@ -471,9 +471,7 @@ class AMQPThreadedPusher(AMQPSimplePusher):
                                .format(self))
         underlying_deque = self._output_fifo.queue
         assert isinstance(underlying_deque, collections.deque)
-        num_of_pending = sum(1 for item in underlying_deque
-                             if item is not None)
-        if num_of_pending:
+        if num_of_pending := sum(item is not None for item in underlying_deque):
             raise ValueError('{0!r} is being shut down but '
                              '{1} pending messages have not been '
                              '(and will not be) published!'

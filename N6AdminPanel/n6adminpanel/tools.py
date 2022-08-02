@@ -38,8 +38,7 @@ def get_exception_message(exc):
     """
     if isinstance(exc, FieldValueError):
         return exc.public_message.rstrip('.') + '.'
-    else:
-        exc_message = getattr(exc, 'message', None)
-        if exc_message and isinstance(exc_message, basestring):
-            return as_unicode(exc_message).rstrip('.') + '.'
+    exc_message = getattr(exc, 'message', None)
+    if exc_message and isinstance(exc_message, basestring):
+        return as_unicode(exc_message).rstrip('.') + '.'
     return None

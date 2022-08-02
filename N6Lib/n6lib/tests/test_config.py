@@ -439,7 +439,7 @@ class TestConfig(_ConfigExampleDataAndMocksMixin,
         ]),
     )
     def test__BASIC_CONVERTERS__list_converters(self, base_name, arg, expected_result):
-        name = 'list_of_' + base_name
+        name = f'list_of_{base_name}'
         converter = Config.BASIC_CONVERTERS[name]
         actual_result = converter(arg)
         self.assertEqualIncludingTypes(actual_result, expected_result)
@@ -451,12 +451,13 @@ class TestConfig(_ConfigExampleDataAndMocksMixin,
     @paramseq
     def modern_init_test_params(cls):
         yield param(
-                config_spec='',
-                optional_kwargs=dict(),
-                config_files_content='',
-                expected_open_calls=DEFAULT,
-                expected_outcome=Config.make(),
-            ).label('empty spec, empty config, no kwargs')
+            config_spec='',
+            optional_kwargs={},
+            config_files_content='',
+            expected_open_calls=DEFAULT,
+            expected_outcome=Config.make(),
+        ).label('empty spec, empty config, no kwargs')
+
 
         yield param(
                 config_spec='',
@@ -492,12 +493,13 @@ class TestConfig(_ConfigExampleDataAndMocksMixin,
             ).label('empty spec, empty settings, some other kwargs')
 
         yield param(
-                config_spec='',
-                optional_kwargs=dict(),
-                config_files_content=DEFAULT,
-                expected_open_calls=DEFAULT,
-                expected_outcome=Config.make(),
-            ).label('empty spec, some config, no kwargs')
+            config_spec='',
+            optional_kwargs={},
+            config_files_content=DEFAULT,
+            expected_open_calls=DEFAULT,
+            expected_outcome=Config.make(),
+        ).label('empty spec, some config, no kwargs')
+
 
         yield param(
                 config_spec='',
@@ -510,12 +512,13 @@ class TestConfig(_ConfigExampleDataAndMocksMixin,
             ).label('empty spec, some settings, no other kwargs')
 
         yield param(
-                config_spec=cls.DEFAULT_CONFIG_SPEC,
-                optional_kwargs=dict(),
-                config_files_content=DEFAULT,
-                expected_open_calls=DEFAULT,
-                expected_outcome=Config.make(cls.EXPECTED_CONFIG_BASE),
-            ).label('config, no kwargs')
+            config_spec=cls.DEFAULT_CONFIG_SPEC,
+            optional_kwargs={},
+            config_files_content=DEFAULT,
+            expected_open_calls=DEFAULT,
+            expected_outcome=Config.make(cls.EXPECTED_CONFIG_BASE),
+        ).label('config, no kwargs')
+
 
         yield param(
                 config_spec=cls.DEFAULT_CONFIG_SPEC,
@@ -699,57 +702,57 @@ class TestConfig(_ConfigExampleDataAndMocksMixin,
             ).label('settings; other kwargs: `custom_converters`, `default_converter`')
 
         yield param(
-                config_spec=cls.DEFAULT_CONFIG_SPEC,
-                optional_kwargs=dict(),
-                config_files_content=(
-                    '\n'.join(cls.CONFIG_FILE_PATH_TO_DEFAULT_CONTENT.itervalues()) +
-                    reduce_indent('''
+            config_spec=cls.DEFAULT_CONFIG_SPEC,
+            optional_kwargs={},
+            config_files_content=(
+                '\n'.join(cls.CONFIG_FILE_PATH_TO_DEFAULT_CONTENT.itervalues())
+                + reduce_indent(
+                    '''
                         [second\xc5\x9b]
                         unknown = 42
                         [THIRD]
                         unknown = 42
                         [fourth]
-                        unknown = 42''')),
-                expected_open_calls=DEFAULT,
-                expected_outcome=Config.make(
-                    cls.EXPECTED_CONFIG_BASE, **{
-                        'second\xc5\x9b': dict(
-                            cls.EXPECTED_CONFIG_BASE['second\xc5\x9b'],
-                            unknown=42.0,
-                        ),
-                        'THIRD': dict(
-                            cls.EXPECTED_CONFIG_BASE['THIRD'],
-                            unknown='42',
-                        ),
-                        'fourth': dict(
-                            cls.EXPECTED_CONFIG_BASE['fourth'],
-                            unknown=42,
-                        ),
-                    }
-                ),
-            ).label('config, with free options')
+                        unknown = 42'''
+                )
+            ),
+            expected_open_calls=DEFAULT,
+            expected_outcome=Config.make(
+                cls.EXPECTED_CONFIG_BASE,
+                **{
+                    'second\xc5\x9b': dict(
+                        cls.EXPECTED_CONFIG_BASE['second\xc5\x9b'],
+                        unknown=42.0,
+                    ),
+                    'THIRD': dict(
+                        cls.EXPECTED_CONFIG_BASE['THIRD'],
+                        unknown='42',
+                    ),
+                    'fourth': dict(
+                        cls.EXPECTED_CONFIG_BASE['fourth'],
+                        unknown=42,
+                    ),
+                }
+            ),
+        ).label('config, with free options')
 
-        # NOTE that option-name parts of settings dict keys (contrary to
-        # option names in config files) *are* case-sensitive (i.e., are
-        # *not* normalized to lowercase).  Of course, typically, they
-        # should already have been normalized to lowercase (it should be
-        # done when Pyramid *.ini file was parsed...).
-        strange_settings = dict(cls.DEFAULT_SETTINGS)
-        strange_settings.update({
-            'unknown': '42',                # no section name -> section name is ''
-            '.UnkNown': ' 4321 ',           # uppercase chars in opt name (to be kept as-is)
-            '': u'43',                      # no section&option name -> both are ''
+
+        strange_settings = dict(cls.DEFAULT_SETTINGS) | {
+            'unknown': '42',  # no section name -> section name is ''
+            '.UnkNown': ' 4321 ',  # uppercase chars in opt name (to be kept as-is)
+            '': u'43',  # no section&option name -> both are ''
             'second\xc5\x9b.unknown': '42',
-            'second\xc5\x9b.UNKNOWN': ' 4321 ',     # uppercase-only opt name (to be kept as-is)
-            'second\xc5\x9b. \t ': '12345',         # whitespace-only opt name (to be kept as-is)
-            'second\xc5\x9b.': u'43',               # empty option name '' (to be kept as-is)
+            'second\xc5\x9b.UNKNOWN': ' 4321 ',  # uppercase-only opt name (to be kept as-is)
+            'second\xc5\x9b. \t ': '12345',  # whitespace-only opt name (to be kept as-is)
+            'second\xc5\x9b.': u'43',  # empty option name '' (to be kept as-is)
             'THIRD.unknown': '42',
-            'THIRD.UnkNown': ' 4321 ',      # uppercase chars in opt name (to be kept as-is)
-            u'THIRD....\u015b': '12345',    # unicode + non-standard chars (to be encoded to utf-8)
+            'THIRD.UnkNown': ' 4321 ',  # uppercase chars in opt name (to be kept as-is)
+            u'THIRD....\u015b': '12345',  # unicode + non-standard chars (to be encoded to utf-8)
             'fourth.unknown': '42',
             'fourth....\xc5\x9b': '12345',  # non-standard chars (to be kept as-is)
-            123: '997',                     # non-string settings key (to be skipped)
-        })
+            123: '997',  # non-string settings key (to be skipped)
+        }
+
         yield param(
                 config_spec=(
                     # allowed free options in the '' section
@@ -796,10 +799,11 @@ class TestConfig(_ConfigExampleDataAndMocksMixin,
             ).label('settings, with free options (including strangely named)')
 
         yield param(
-                config_spec=cls.DEFAULT_CONFIG_SPEC,
-                optional_kwargs=dict(),
-                config_files_content=(
-                    reduce_indent('''
+            config_spec=cls.DEFAULT_CONFIG_SPEC,
+            optional_kwargs={},
+            config_files_content=(
+                reduce_indent(
+                    '''
                         [first]
                         a : 42
                         b : 43
@@ -807,9 +811,12 @@ class TestConfig(_ConfigExampleDataAndMocksMixin,
                         klm.rst : True
                         [THIRD]
                         xx = ""
-                        zz = None''')),
-                expected_open_calls=DEFAULT,
-                expected_outcome=Config.make({
+                        zz = None'''
+                )
+            ),
+            expected_open_calls=DEFAULT,
+            expected_outcome=Config.make(
+                {
                     'first': {
                         'a': '42',
                         'b': 43,
@@ -835,8 +842,10 @@ class TestConfig(_ConfigExampleDataAndMocksMixin,
                         'f': 42,
                     },
                     'sixth': {},
-                }),
-            ).label('config, with required options/sections only')
+                }
+            ),
+        ).label('config, with required options/sections only')
+
 
         yield param(
                 config_spec=cls.DEFAULT_CONFIG_SPEC,
@@ -882,12 +891,13 @@ class TestConfig(_ConfigExampleDataAndMocksMixin,
             ).label('settings, with required options/sections only')
 
         yield param(
-                config_spec='[spam]\na b c = foo',
-                optional_kwargs=dict(),
-                config_files_content=DEFAULT,
-                expected_open_calls=[],
-                expected_outcome=(ConfigError, r'ValueError:'),
-            ).label('error: wrong spec [using config]')
+            config_spec='[spam]\na b c = foo',
+            optional_kwargs={},
+            config_files_content=DEFAULT,
+            expected_open_calls=[],
+            expected_outcome=(ConfigError, r'ValueError:'),
+        ).label('error: wrong spec [using config]')
+
 
         yield param(
                 config_spec='[spam]\na b c = foo',
@@ -900,12 +910,13 @@ class TestConfig(_ConfigExampleDataAndMocksMixin,
             ).label('error: wrong spec [using settings]')
 
         yield param(
-                config_spec=u'[spam]\na b c = foo',
-                optional_kwargs=dict(),
-                config_files_content=DEFAULT,
-                expected_open_calls=[],
-                expected_outcome=(TypeError, r'config_spec must be str'),
-            ).label('error: wrong type of spec [using config]')
+            config_spec=u'[spam]\na b c = foo',
+            optional_kwargs={},
+            config_files_content=DEFAULT,
+            expected_open_calls=[],
+            expected_outcome=(TypeError, r'config_spec must be str'),
+        ).label('error: wrong type of spec [using config]')
+
 
         yield param(
                 config_spec=u'[spam]\na b c = foo',
@@ -941,12 +952,13 @@ class TestConfig(_ConfigExampleDataAndMocksMixin,
                     'when specified as string [using settings]')
 
         yield param(
-                config_spec='',
-                optional_kwargs=dict(),
-                config_files_content='abc = foo\n',
-                expected_open_calls=[call('a/b/00_global.conf')],
-                expected_outcome=(ConfigError, r'MissingSectionHeaderError:'),
-            ).label('error: wrong config syntax [here: missing section header]')
+            config_spec='',
+            optional_kwargs={},
+            config_files_content='abc = foo\n',
+            expected_open_calls=[call('a/b/00_global.conf')],
+            expected_outcome=(ConfigError, r'MissingSectionHeaderError:'),
+        ).label('error: wrong config syntax [here: missing section header]')
+
 
         class WithTroublesomeStr(object):
             def __str__(self):
@@ -965,18 +977,22 @@ class TestConfig(_ConfigExampleDataAndMocksMixin,
 
         # (NOTE that section names are always case-*sensitive*)
         yield param(
-                config_spec=cls.DEFAULT_CONFIG_SPEC,
-                optional_kwargs=dict(),
-                config_files_content=reduce_indent('''
+            config_spec=cls.DEFAULT_CONFIG_SPEC,
+            optional_kwargs={},
+            config_files_content=reduce_indent(
+                '''
                     [third]
                     xx = ham
                     zz = ["spam"]
-                    '''),
-                expected_open_calls=DEFAULT,
-                expected_outcome=(
-                    ConfigError,
-                    r'missing required config sections: first, THIRD'),
-            ).label('error: missing section(s) [using config]')
+                    '''
+            ),
+            expected_open_calls=DEFAULT,
+            expected_outcome=(
+                ConfigError,
+                r'missing required config sections: first, THIRD',
+            ),
+        ).label('error: missing section(s) [using config]')
+
 
         # (NOTE that section names are always case-*sensitive*)
         yield param(
@@ -995,19 +1011,25 @@ class TestConfig(_ConfigExampleDataAndMocksMixin,
             ).label('error: missing section(s) [using settings]')
 
         yield param(
-                config_spec=cls.DEFAULT_CONFIG_SPEC,
-                optional_kwargs=dict(),
-                config_files_content=reduce_indent('''
+            config_spec=cls.DEFAULT_CONFIG_SPEC,
+            optional_kwargs={},
+            config_files_content=reduce_indent(
+                '''
                     [first]
                     klm.rst: true
                     [THIRD]
-                    zz=42'''),
-                expected_open_calls=DEFAULT,
-                expected_outcome=(
-                    ConfigError, (
-                        r'missing required config options: '
-                        r'first\.a, first\.b, first\.hij, THIRD\.xx')),
-            ).label('error: missing option(s) [using config]')
+                    zz=42'''
+            ),
+            expected_open_calls=DEFAULT,
+            expected_outcome=(
+                ConfigError,
+                (
+                    r'missing required config options: '
+                    r'first\.a, first\.b, first\.hij, THIRD\.xx'
+                ),
+            ),
+        ).label('error: missing option(s) [using config]')
+
 
         yield param(
                 config_spec=cls.DEFAULT_CONFIG_SPEC,
@@ -1026,22 +1048,27 @@ class TestConfig(_ConfigExampleDataAndMocksMixin,
             ).label('error: missing option(s) [using settings]')
 
         yield param(
-                config_spec=cls.DEFAULT_CONFIG_SPEC,
-                optional_kwargs=dict(),
-                config_files_content=(
-                    '\n'.join(cls.CONFIG_FILE_PATH_TO_DEFAULT_CONTENT.itervalues()) +
-                    reduce_indent('''
+            config_spec=cls.DEFAULT_CONFIG_SPEC,
+            optional_kwargs={},
+            config_files_content=(
+                '\n'.join(cls.CONFIG_FILE_PATH_TO_DEFAULT_CONTENT.itervalues())
+                + reduce_indent(
+                    '''
                         [first]
                         unknown = 1
                         [THIRD]
                         unknown = 3  ; NOTE: spec of this section contains `...`
                         [fifth]
-                        unknown = 5''')),
-                expected_open_calls=DEFAULT,
-                expected_outcome=(
-                    ConfigError,
-                    r'illegal config options: first\.unknown, fifth\.unknown'),
-            ).label('error: illegal option(s) [using config]')
+                        unknown = 5'''
+                )
+            ),
+            expected_open_calls=DEFAULT,
+            expected_outcome=(
+                ConfigError,
+                r'illegal config options: first\.unknown, fifth\.unknown',
+            ),
+        ).label('error: illegal option(s) [using config]')
+
 
         yield param(
                 config_spec=cls.DEFAULT_CONFIG_SPEC,
@@ -1062,17 +1089,21 @@ class TestConfig(_ConfigExampleDataAndMocksMixin,
             ).label('error: illegal option(s) [using settings]')
 
         yield param(
-                config_spec=cls.DEFAULT_CONFIG_SPEC.replace('float', 'weird'),
-                optional_kwargs=dict(),
-                config_files_content=DEFAULT,
-                expected_open_calls=DEFAULT,
-                expected_outcome=(
-                    ConfigError, (
-                        r'unknown config value converter `weird` '
-                        r'\(for option first\.efg\); '
-                        r'unknown config value converter `weird` '
-                        r'\(for free options in section second.*')),
-            ).label('error: unknown converter [using config]')
+            config_spec=cls.DEFAULT_CONFIG_SPEC.replace('float', 'weird'),
+            optional_kwargs={},
+            config_files_content=DEFAULT,
+            expected_open_calls=DEFAULT,
+            expected_outcome=(
+                ConfigError,
+                (
+                    r'unknown config value converter `weird` '
+                    r'\(for option first\.efg\); '
+                    r'unknown config value converter `weird` '
+                    r'\(for free options in section second.*'
+                ),
+            ),
+        ).label('error: unknown converter [using config]')
+
 
         yield param(
                 config_spec=cls.DEFAULT_CONFIG_SPEC.replace('float', 'weird'),
@@ -1117,26 +1148,29 @@ class TestConfig(_ConfigExampleDataAndMocksMixin,
             ).label('error when applying converter [using settings]')
 
         yield param(
-                config_spec=cls.DEFAULT_CONFIG_SPEC,
-                optional_kwargs=dict(),
-                config_files_content=DEFAULT,
-                expected_open_calls=DEFAULT,
-                expected_outcome=Config.make(
-                    cls.EXPECTED_CONFIG_BASE,
-                    first=dict(
-                        cls.EXPECTED_CONFIG_BASE['first'],
-                        a='abc',
-                    ),
-                    THIRD=dict(
-                        cls.EXPECTED_CONFIG_BASE['THIRD'],
-                        yy={u'a': 321},
-                    ),
+            config_spec=cls.DEFAULT_CONFIG_SPEC,
+            optional_kwargs={},
+            config_files_content=DEFAULT,
+            expected_open_calls=DEFAULT,
+            expected_outcome=Config.make(
+                cls.EXPECTED_CONFIG_BASE,
+                first=dict(
+                    cls.EXPECTED_CONFIG_BASE['first'],
+                    a='abc',
                 ),
-            ).label('config with some options overridden with --n6config-override'
-                ).context(patch, 'sys.argv', sys.argv + [
-                    '--n6config-override',
-                    'first.a=abc',
-                    'THIRD.yy={"a": 321}'])
+                THIRD=dict(
+                    cls.EXPECTED_CONFIG_BASE['THIRD'],
+                    yy={u'a': 321},
+                ),
+            ),
+        ).label(
+            'config with some options overridden with --n6config-override'
+        ).context(
+            patch,
+            'sys.argv',
+            sys.argv
+            + ['--n6config-override', 'first.a=abc', 'THIRD.yy={"a": 321}'],
+        )
 
     @foreach(modern_init_test_params)
     def test_modern_init(self,
@@ -1156,25 +1190,28 @@ class TestConfig(_ConfigExampleDataAndMocksMixin,
     @paramseq
     def legacy_init_test_params(cls):
         yield param(
-                args=[],
-                kwargs=dict(),
-                config_files_content='',
-                expected_outcome=Config.make(),
-            ).label('empty config, no arguments')
+            args=[],
+            kwargs={},
+            config_files_content='',
+            expected_outcome=Config.make(),
+        ).label('empty config, no arguments')
+
 
         yield param(
-                args=[],
-                kwargs=dict(),
-                config_files_content=DEFAULT,
-                expected_outcome=Config.make(cls.EXPECTED_LEGACY_INIT_CONFIG_BASE),
-            ).label('config, no arguments')
+            args=[],
+            kwargs={},
+            config_files_content=DEFAULT,
+            expected_outcome=Config.make(cls.EXPECTED_LEGACY_INIT_CONFIG_BASE),
+        ).label('config, no arguments')
+
 
         yield param(
-                args=[cls.DEFAULT_LEGACY_REQUIRED],
-                kwargs=dict(),
-                config_files_content=DEFAULT,
-                expected_outcome=Config.make(cls.EXPECTED_LEGACY_INIT_CONFIG_BASE),
-            ).label('config, `required` as positional arg')
+            args=[cls.DEFAULT_LEGACY_REQUIRED],
+            kwargs={},
+            config_files_content=DEFAULT,
+            expected_outcome=Config.make(cls.EXPECTED_LEGACY_INIT_CONFIG_BASE),
+        ).label('config, `required` as positional arg')
+
 
         yield param(
                 args=[],
@@ -1184,10 +1221,11 @@ class TestConfig(_ConfigExampleDataAndMocksMixin,
             ).label('config, `required` as kwarg')
 
         yield param(
-                args=[cls.DEFAULT_LEGACY_REQUIRED],
-                kwargs=dict(),
-                config_files_content=(
-                    reduce_indent('''
+            args=[cls.DEFAULT_LEGACY_REQUIRED],
+            kwargs={},
+            config_files_content=(
+                reduce_indent(
+                    '''
                     [first]
                     a : 42
                     b : 43
@@ -1196,9 +1234,11 @@ class TestConfig(_ConfigExampleDataAndMocksMixin,
                     [THIRD]
                     xx = ""
                     zz = ({}, [])
-                    ''')),
-
-                expected_outcome=Config.make({
+                    '''
+                )
+            ),
+            expected_outcome=Config.make(
+                {
                     'first': {
                         'a': '42',
                         'b': '43',
@@ -1209,52 +1249,67 @@ class TestConfig(_ConfigExampleDataAndMocksMixin,
                         'xx': '',
                         'zz': '({}, [])',
                     },
-                }),
-            ).label('config, with required options/sections only')
+                }
+            ),
+        ).label('config, with required options/sections only')
+
 
         yield param(
-                args=[cls.DEFAULT_LEGACY_REQUIRED],
-                kwargs=dict(),
-                config_files_content='abc = foo\n',
-                expected_open_calls=[call('a/b/00_global.conf')],
-                expected_outcome=(
-                    ConfigParser.MissingSectionHeaderError,
-                    r'no section headers'),
-            ).label('error: wrong config syntax [here: missing section header]')
+            args=[cls.DEFAULT_LEGACY_REQUIRED],
+            kwargs={},
+            config_files_content='abc = foo\n',
+            expected_open_calls=[call('a/b/00_global.conf')],
+            expected_outcome=(
+                ConfigParser.MissingSectionHeaderError,
+                r'no section headers',
+            ),
+        ).label('error: wrong config syntax [here: missing section header]')
+
 
         # (NOTE that section names are always case-*sensitive*)
         yield param(
-                args=[cls.DEFAULT_LEGACY_REQUIRED],
-                kwargs=dict(),
-                config_files_content=reduce_indent('''
+            args=[cls.DEFAULT_LEGACY_REQUIRED],
+            kwargs={},
+            config_files_content=reduce_indent(
+                '''
                     [third]
                     xx = ham
                     zz = ["spam"]
-                    '''),
-                expected_outcome=(
-                    SystemExit,
-                    r'missing required config sections: THIRD, first'),
-            ).label('error: missing section(s)')
+                    '''
+            ),
+            expected_outcome=(
+                SystemExit,
+                r'missing required config sections: THIRD, first',
+            ),
+        ).label('error: missing section(s)')
+
 
         yield param(
-                args=[cls.DEFAULT_LEGACY_REQUIRED],
-                kwargs=dict(),
-                config_files_content=reduce_indent('''
+            args=[cls.DEFAULT_LEGACY_REQUIRED],
+            kwargs={},
+            config_files_content=reduce_indent(
+                '''
                     [first]
                     klm.rst: true
                     [THIRD]
-                    zz=42'''),
-                expected_outcome=(
-                    SystemExit, (
-                        r'missing required config options: '
-                        r'THIRD\.xx, first\.a, first\.b, first\.hij')),
-            ).label('error: missing option(s)')
+                    zz=42'''
+            ),
+            expected_outcome=(
+                SystemExit,
+                (
+                    r'missing required config options: '
+                    r'THIRD\.xx, first\.a, first\.b, first\.hij'
+                ),
+            ),
+        ).label('error: missing option(s)')
+
 
         yield param(
             args=[cls.DEFAULT_LEGACY_REQUIRED],
-            kwargs=dict(),
+            kwargs={},
             config_files_content=(
-                reduce_indent('''
+                reduce_indent(
+                    '''
                             [first]
                             a : 42
                             b : 43
@@ -1263,32 +1318,39 @@ class TestConfig(_ConfigExampleDataAndMocksMixin,
                             [THIRD]
                             xx = ""
                             zz = ({}, [])
-                            ''')),
+                            '''
+                )
+            ),
+            expected_outcome=Config.make(
+                {
+                    'first': {
+                        'a': '321',
+                        'b': '43',
+                        'hij': '44',
+                        'klm.rst': 'True',
+                    },
+                    'THIRD': {
+                        'xx': '',
+                        'zz': '({}, [])',
+                    },
+                }
+            ),
+        ).label(
+            'One config value overridden with --ngconfig-override commandline argument'
+        ).context(
+            patch,
+            'sys.argv',
+            sys.argv
+            + ['--foo', '--n6config-override', 'first.a=321', 'fake.option=value'],
+        )
 
-            expected_outcome=Config.make({
-                'first': {
-                    'a': '321',
-                    'b': '43',
-                    'hij': '44',
-                    'klm.rst': 'True',
-                },
-                'THIRD': {
-                    'xx': '',
-                    'zz': '({}, [])',
-                },
-            }),
-        ).label('One config value overridden with --ngconfig-override commandline argument'
-            ).context(patch, 'sys.argv', sys.argv + [
-                '--foo',
-                '--n6config-override',
-                'first.a=321',
-                'fake.option=value'])
 
         yield param(
             args=[cls.DEFAULT_LEGACY_REQUIRED],
-            kwargs=dict(),
+            kwargs={},
             config_files_content=(
-                reduce_indent('''
+                reduce_indent(
+                    '''
                             [first]
                             a : 42
                             b : 43
@@ -1297,28 +1359,38 @@ class TestConfig(_ConfigExampleDataAndMocksMixin,
                             [THIRD]
                             xx = ""
                             zz = ({}, [])
-                            ''')),
-
-            expected_outcome=Config.make({
-                'first': {
-                    'a': '321',
-                    'b': '43',
-                    'hij': '44',
-                    'klm.rst': 'True',
-                },
-                'THIRD': {
-                    'xx': 'test',
-                    'zz': '({}, [])',
-                },
-            }),
-        ).label('Two config values overridden with --ngconfig-override commandline argument'
-            ).context(patch, 'sys.argv', sys.argv + [
+                            '''
+                )
+            ),
+            expected_outcome=Config.make(
+                {
+                    'first': {
+                        'a': '321',
+                        'b': '43',
+                        'hij': '44',
+                        'klm.rst': 'True',
+                    },
+                    'THIRD': {
+                        'xx': 'test',
+                        'zz': '({}, [])',
+                    },
+                }
+            ),
+        ).label(
+            'Two config values overridden with --ngconfig-override commandline argument'
+        ).context(
+            patch,
+            'sys.argv',
+            sys.argv
+            + [
                 '--n6recovery',
                 '--n6config-override',
                 'first.a=321',
                 'THIRD.xx=test',
                 '-foo',
-                '--bar'])
+                '--bar',
+            ],
+        )
 
     @foreach(legacy_init_test_params)
     def test_legacy_init(self,
@@ -1604,11 +1676,14 @@ class TestConfig(_ConfigExampleDataAndMocksMixin,
                                                expected_outcome,
                                                expected_log_invocations):
         with patch('n6lib.config.LOGGER') as logger_mock:
-            self._test_init(args=[config_spec],
-                            kwargs=dict(),
-                            config_files_content=config_files_content,
-                            expected_outcome=expected_outcome,
-                            expected_open_calls=DEFAULT)
+            self._test_init(
+                args=[config_spec],
+                kwargs={},
+                config_files_content=config_files_content,
+                expected_outcome=expected_outcome,
+                expected_open_calls=DEFAULT,
+            )
+
             if expected_log_invocations is not None:
                 expected_log_levels = {inv.level for inv in expected_log_invocations}
                 unexpected_log_levels = self.TESTED_LOGGER_LEVELS - expected_log_levels

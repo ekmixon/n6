@@ -53,10 +53,9 @@ class NonBlockingLockWrapper(object):
     def _make_lock_ascii_description(self, lock_description):
         if lock_description is None:
             return repr(self.lock)
-        else:
-            if isinstance(lock_description, str):
-                lock_description = lock_description.decode('utf-8')
-            return lock_description.encode('ascii', 'backslashreplace')
+        if isinstance(lock_description, str):
+            lock_description = lock_description.decode('utf-8')
+        return lock_description.encode('ascii', 'backslashreplace')
 
     def __enter__(self):
         self.acquire()
@@ -68,7 +67,7 @@ class NonBlockingLockWrapper(object):
     def acquire(self):
         if self.lock.acquire(False):
             return True
-        raise RuntimeError('could not acquire {}'.format(self._lock_ascii_description))
+        raise RuntimeError(f'could not acquire {self._lock_ascii_description}')
 
     def release(self):
         self.lock.release()

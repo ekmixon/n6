@@ -75,7 +75,7 @@ class Anonymizer(QueuedBase):
         force_exit_on_any_remaining_entered_contexts(self.auth_api)
         with self.auth_api:
             resource_to_org_ids = self._get_resource_to_org_ids(event_type, event_data)
-            if any(org_ids for org_ids in resource_to_org_ids.itervalues()):
+            if any(resource_to_org_ids.itervalues()):
                 (raw_result_dict,
                  cleaned_result_dict,
                  output_body) = self._get_result_dicts_and_output_body(
@@ -109,13 +109,17 @@ class Anonymizer(QueuedBase):
             inside_org_ids = set()
             threats_org_ids = set()
             source = event_data['source']
-            subsource_to_saa_info = (
-                self.auth_api.get_source_ids_to_subs_to_stream_api_access_infos().get(source))
-            if subsource_to_saa_info:
+            if subsource_to_saa_info := (
+                self.auth_api.get_source_ids_to_subs_to_stream_api_access_infos().get(
+                    source
+                )
+            ):
                 predicate_ready_dict = RecordFacadeForPredicates(event_data, self.data_spec)
-                client_org_ids = set(
+                client_org_ids = {
                     org_id.decode('ascii', 'strict')
-                    for org_id in event_data.get('client', ()))
+                    for org_id in event_data.get('client', ())
+                }
+
                 for subsource_refint, (
                         predicate, res_to_org_ids) in subsource_to_saa_info.iteritems():
                     subs_inside_org_ids = res_to_org_ids['inside'] & client_org_ids

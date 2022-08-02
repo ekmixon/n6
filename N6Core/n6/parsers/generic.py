@@ -277,17 +277,18 @@ class BaseParser(ConfigMixin, QueuedBase):
 
         # basic AMQP properties -- each key prefixed with 'properties.'
         properties.timestamp = str(datetime.utcfromtimestamp(properties.timestamp))
-        data.update(('properties.' + key, value)
-                    for key, value in vars(properties).iteritems()
-                    if key != 'headers')
+        data.update(
+            (f'properties.{key}', value)
+            for key, value in vars(properties).iteritems()
+            if key != 'headers'
+        )
+
 
         # the source specification string and the format version tag
         source_label, rest_of_rk = routing_key.split('.', 1)
         source_channel, _, raw_format_version_tag = rest_of_rk.partition('.')
-        data['source'] = '{}.{}'.format(source_label, source_channel)
-        data['raw_format_version_tag'] = (
-            raw_format_version_tag if raw_format_version_tag
-            else None)
+        data['source'] = f'{source_label}.{source_channel}'
+        data['raw_format_version_tag'] = raw_format_version_tag or None
 
         # the raw data body
         data['raw'] = body
@@ -310,7 +311,7 @@ class BaseParser(ConfigMixin, QueuedBase):
         Typically, this method is used indirectly -- being called in
         input_callback().
         """
-        return '{}.parsed.{}'.format(self.event_type, data['source'])
+        return f"{self.event_type}.parsed.{data['source']}"
 
     def get_output_bodies(self, data, working_seq):
         """
@@ -358,15 +359,16 @@ class BaseParser(ConfigMixin, QueuedBase):
                 parsed = self.postprocess_parsed(data, parsed, total,
                                                  item_no=(i + 1))
                 working_seq[i] = parsed.get_ready_json()
-        if not working_seq and not self.allow_empty_results:
+        if working_seq or self.allow_empty_results:
+            # we have parsed and postprocessed all data so now
+            # we can start publishing without fear of breaking
+            # publishing in the midst by a data error
+            return working_seq
+        else:
             raise ValueError('no output data to publish; either all data '
                              'items caused AdjusterError (you can look '
                              'for apropriate warnings in logs) or input '
                              'data contained no actual data items')
-        # we have parsed and postprocessed all data so now
-        # we can start publishing without fear of breaking
-        # publishing in the midst by a data error
-        return working_seq
 
     def delete_too_long_address(self, parsed):
         _address = parsed.get('address')
@@ -584,11 +586,10 @@ class BaseParser(ConfigMixin, QueuedBase):
         serialized = []
         for k, v in sorted(self.iter_output_id_base_items(parsed)):
             if isinstance(v, (list, tuple)):
-                v = ('{}'.format(self._prepare_for_deterministic_serialization(el))
-                     for el in v)
+                v = (f'{self._prepare_for_deterministic_serialization(el)}' for el in v)
                 v = ','.join(sorted(v))
             v = self._prepare_for_deterministic_serialization(v)
-            serialized.append("{},{}".format(k, v))
+            serialized.append(f"{k},{v}")
         return hashlib.md5("\n".join(serialized)).hexdigest()
 
     def _prepare_for_deterministic_serialization(self, value):
@@ -609,10 +610,11 @@ class BaseParser(ConfigMixin, QueuedBase):
                                     .format(value, v, type(v)))
                 # non-canonical, int-like repr for long (without the 'L' suffix)
                 # -- because: whether a number is long is platform-dependant
-                item_reprs[repr(k)] = (repr(v) if not isinstance(v, long)
-                                       else str(v))
-            value = '{%s}' % ', '.join('{}: {}'.format(k, v)
-                                       for k, v in sorted(item_reprs.iteritems()))
+                item_reprs[repr(k)] = str(v) if isinstance(v, long) else repr(v)
+            value = '{%s}' % ', '.join(
+                f'{k}: {v}' for k, v in sorted(item_reprs.iteritems())
+            )
+
             assert isinstance(value, str)
         elif isinstance(value, unicode):
             value = value.encode('utf-8')
@@ -815,26 +817,23 @@ class BlackListParser(BaseParser):
         return parsed
 
     def _get_bl_current_time(self, data, parsed):
-        bl_current_time = self.get_bl_current_time_from_data(data, parsed)
-        if bl_current_time:
+        if bl_current_time := self.get_bl_current_time_from_data(data, parsed):
             return bl_current_time
         # if _bl-current-time value cannot be extracted from data,
         # get it from AMQP headers
         if 'meta' in data:
-            mail_time = data['meta'].get('mail_time')
-            if mail_time:
+            if mail_time := data['meta'].get('mail_time'):
                 return mail_time
-            http_last_modified = data['meta'].get('http_last_modified')
-            if http_last_modified:
+            if http_last_modified := data['meta'].get('http_last_modified'):
                 return http_last_modified
         return data['properties.timestamp']
 
     def get_bl_current_time_from_data(self, data, parsed):
         if self.bl_current_time_regex:
-            match = self.bl_current_time_regex.search(data['raw'])
-            if match:
-                bl_current_time = match.group(self.bl_current_time_regex_group)
-                if bl_current_time:
+            if match := self.bl_current_time_regex.search(data['raw']):
+                if bl_current_time := match.group(
+                    self.bl_current_time_regex_group
+                ):
                     if self.bl_current_time_format:
                         return datetime.strptime(bl_current_time,
                                                  self.bl_current_time_format)
@@ -1026,11 +1025,9 @@ class XmlDataParser(BaseParser):
                     LOGGER.warning('SkipThisRow: %r', exc)
                 else:
                     if isinstance(r, list):
-                        for ins_rd in r:
-                            yield ins_rd
-                    else:
-                        if r is not SkipThisRow and not isinstance(r, SkipThisRow):
-                            yield parsed
+                        yield from r
+                    elif r is not SkipThisRow and not isinstance(r, SkipThisRow):
+                        yield parsed
 
     def iter_entry(self, data):
         """
@@ -1046,8 +1043,7 @@ class XmlDataParser(BaseParser):
         """
         raw_entry = StringIO(data['raw']).getvalue()
         parser = etree.XMLParser(ns_clean=True, remove_blank_text=True)
-        tree = etree.fromstring(str(raw_entry), parser)
-        return tree
+        return etree.fromstring(str(raw_entry), parser)
 
 
 
@@ -1064,5 +1060,8 @@ def entry_point_factory(module):
     for parser_class in all_subclasses(BaseParser):
         if (not parser_class.__module__.endswith('.generic') and
               not parser_class.__name__.startswith('_')):
-            setattr(module, "%s_main" % parser_class.__name__,
-                    generate_parser_main(parser_class))
+            setattr(
+                module,
+                f"{parser_class.__name__}_main",
+                generate_parser_main(parser_class),
+            )

@@ -70,10 +70,8 @@ def callable_mock(name):
     def mock(self, *args, **kwargs):
         self.calls.append(Call(name, *args, **kwargs))
         result = self.call_results.get(name)
-        if callable(result):
-            return result(*args, **kwargs)
-        else:
-            return result
+        return result(*args, **kwargs) if callable(result) else result
+
     mock.__name__ = 'mock__{}'.format(name)
     return mock
 
@@ -277,7 +275,7 @@ class Test__command(unittest.TestCase):
 
     def test__with_venv_dir(self):
         SOME_VENV_DIR = '/my/venv'
-        BIN = SOME_VENV_DIR + '/bin/'
+        BIN = f'{SOME_VENV_DIR}/bin/'
         with self._patch(venv_dir=SOME_VENV_DIR):
             command(self.SOME_COMMAND)
             self.assertEqual(self.calls, [
@@ -291,14 +289,23 @@ class Test__command(unittest.TestCase):
         self.call_results['os.system'] = 12345  # non-zero -> error
         with self._patch():
             command(self.SOME_COMMAND)
-            self.assertEqual(self.calls, [
-                Call('os.getcwd'),
-                Call('do_setup.LOGGER.info',
-                     'executing: %r in %r', self.SOME_COMMAND, self.SOME_CWD),
-                Call('os.system', self.SOME_COMMAND),
-                Call('sys.exit', ('exiting after an external '
-                                  'command error ({})'.format(self.SOME_COMMAND))),
-            ])
+            self.assertEqual(
+                self.calls,
+                [
+                    Call('os.getcwd'),
+                    Call(
+                        'do_setup.LOGGER.info',
+                        'executing: %r in %r',
+                        self.SOME_COMMAND,
+                        self.SOME_CWD,
+                    ),
+                    Call('os.system', self.SOME_COMMAND),
+                    Call(
+                        'sys.exit',
+                        f'exiting after an external command error ({self.SOME_COMMAND})',
+                    ),
+                ],
+            )
 
 
 @using_template_and_cases
@@ -353,32 +360,35 @@ class Test__main(unittest.TestCase):
         with self._patch():
             main()
             self.assertEqual(do_setup.venv_dir, self.ORIGINAL_VENV_DIR)
-            self.assertEqual(self.calls, [
-                Call('do_setup.parse_arguments'),
-                Call('do_setup.configure_logging', self.call_results['do_setup.parse_arguments']),
-                Call('os.getcwd'),
-                Call('os.chdir', self.THIS_SCRIPT_DIR),
-
-                Call('os.chdir', self.THIS_SCRIPT_DIR + '/N6SDK'),
-                Call('do_setup.command', 'python setup.py install'),
-                Call('do_setup.LOGGER.info', "%r setup done", 'N6SDK'),
-                Call('os.chdir', self.THIS_SCRIPT_DIR + '/N6Lib'),
-                Call('do_setup.command', 'python setup.py install'),
-                Call('do_setup.LOGGER.info', "%r setup done", 'N6Lib'),
-                Call('os.chdir', self.THIS_SCRIPT_DIR + '/foo'),
-                Call('do_setup.command', 'python setup.py install'),
-                Call('do_setup.LOGGER.info', "%r setup done", 'foo'),
-
-                Call('os.chdir', self.THIS_SCRIPT_DIR),
-                Call('do_setup.command', 'pip install nose'),
-                Call('do_setup.LOGGER.info', "%r installed", 'nose'),
-                Call('do_setup.command', 'pip install coverage'),
-                Call('do_setup.LOGGER.info', "%r installed", 'coverage'),
-                Call('do_setup.command', 'pip install pylint'),
-                Call('do_setup.LOGGER.info', "%r installed", 'pylint'),
-
-                Call('os.chdir', self.ORIGINAL_WD),
-            ])
+            self.assertEqual(
+                self.calls,
+                [
+                    Call('do_setup.parse_arguments'),
+                    Call(
+                        'do_setup.configure_logging',
+                        self.call_results['do_setup.parse_arguments'],
+                    ),
+                    Call('os.getcwd'),
+                    Call('os.chdir', self.THIS_SCRIPT_DIR),
+                    Call('os.chdir', f'{self.THIS_SCRIPT_DIR}/N6SDK'),
+                    Call('do_setup.command', 'python setup.py install'),
+                    Call('do_setup.LOGGER.info', "%r setup done", 'N6SDK'),
+                    Call('os.chdir', f'{self.THIS_SCRIPT_DIR}/N6Lib'),
+                    Call('do_setup.command', 'python setup.py install'),
+                    Call('do_setup.LOGGER.info', "%r setup done", 'N6Lib'),
+                    Call('os.chdir', f'{self.THIS_SCRIPT_DIR}/foo'),
+                    Call('do_setup.command', 'python setup.py install'),
+                    Call('do_setup.LOGGER.info', "%r setup done", 'foo'),
+                    Call('os.chdir', self.THIS_SCRIPT_DIR),
+                    Call('do_setup.command', 'pip install nose'),
+                    Call('do_setup.LOGGER.info', "%r installed", 'nose'),
+                    Call('do_setup.command', 'pip install coverage'),
+                    Call('do_setup.LOGGER.info', "%r installed", 'coverage'),
+                    Call('do_setup.command', 'pip install pylint'),
+                    Call('do_setup.LOGGER.info', "%r installed", 'pylint'),
+                    Call('os.chdir', self.ORIGINAL_WD),
+                ],
+            )
 
     def test__develop__virtualenv_dir__update_pip_and_setuptools(self):
         import do_setup
@@ -391,25 +401,28 @@ class Test__main(unittest.TestCase):
         with self._patch():
             main()
             self.assertEqual(do_setup.venv_dir, self.ABSPATH_PREFIX + self.CUSTOM_VENV_DIR)
-            self.assertEqual(self.calls, [
-                Call('do_setup.parse_arguments'),
-                Call('do_setup.configure_logging', self.call_results['do_setup.parse_arguments']),
-                Call('os.getcwd'),
-                Call('os.chdir', self.THIS_SCRIPT_DIR),
-
-                Call('osp.abspath', self.CUSTOM_VENV_DIR),
-
-                Call('do_setup.command', 'pip install --upgrade pip setuptools'),
-                Call('do_setup.LOGGER.info', "'pip' and 'setuptools' updated"),
-
-                Call('os.chdir', self.THIS_SCRIPT_DIR + '/spaaam'),
-                Call('do_setup.command', 'python setup.py develop'),
-                Call('do_setup.LOGGER.info', "%r setup done", 'spaaam'),
-
-                Call('os.chdir', self.THIS_SCRIPT_DIR),
-
-                Call('os.chdir', self.ORIGINAL_WD),
-            ])
+            self.assertEqual(
+                self.calls,
+                [
+                    Call('do_setup.parse_arguments'),
+                    Call(
+                        'do_setup.configure_logging',
+                        self.call_results['do_setup.parse_arguments'],
+                    ),
+                    Call('os.getcwd'),
+                    Call('os.chdir', self.THIS_SCRIPT_DIR),
+                    Call('osp.abspath', self.CUSTOM_VENV_DIR),
+                    Call(
+                        'do_setup.command', 'pip install --upgrade pip setuptools'
+                    ),
+                    Call('do_setup.LOGGER.info', "'pip' and 'setuptools' updated"),
+                    Call('os.chdir', f'{self.THIS_SCRIPT_DIR}/spaaam'),
+                    Call('do_setup.command', 'python setup.py develop'),
+                    Call('do_setup.LOGGER.info', "%r setup done", 'spaaam'),
+                    Call('os.chdir', self.THIS_SCRIPT_DIR),
+                    Call('os.chdir', self.ORIGINAL_WD),
+                ],
+            )
 
     #
     # cases when command() raises an exception:

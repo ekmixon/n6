@@ -62,12 +62,9 @@ class SourceData(object):
         """
         if ips_old is None and ips_new is None:
             return False
-        if (ips_old is None and ips_new is not None) or (ips_old is not None and ips_new is None):
+        if ips_old is None or ips_new is None:
             return True
-        if sorted(ips_old) == sorted(ips_new):
-            return False
-        else:
-            return True
+        return sorted(ips_old) != sorted(ips_new)
         
     def get_event_key(self, data):
         if data.get("url") is not None:
@@ -75,12 +72,11 @@ class SourceData(object):
         elif data.get("fqdn") is not None:
             return data.get("fqdn")
         elif data.get("address") is not None:
-            ips = tuple(sorted([str(addr["ip"]) for addr in data.get("address")]))
-            return ips
+            return tuple(sorted([str(addr["ip"]) for addr in data.get("address")]))
         else:
-            raise n6QueueProcessingException('Unable to determine event key for source: {}. Event '
-                                             'must have at least one of `url`, `fqdn`, '
-                                             '`address`, data: {}'.format(data['source'], data) )
+            raise n6QueueProcessingException(
+                f"Unable to determine event key for source: {data['source']}. Event must have at least one of `url`, `fqdn`, `address`, data: {data}"
+            )
 
     def process_event(self, data):
         event_time = parse_iso_datetime_to_utc(data['_bl-time'])
@@ -214,8 +210,7 @@ class ComparatorDataWrapper(object):
         """
 
         source_data = self.comp_data.get_or_create_sourcedata(source)
-        for event in source_data.process_deleted():
-            yield event
+        yield from source_data.process_deleted()
         self.store_state()
 
 
@@ -233,16 +228,16 @@ class ComparatorState(object):
                                     }
                        ...}
         """
-        self.open_series = dict()
+        self.open_series = {}
         self.cleanup_time = cleanup_time
 
     def is_series_complete(self, series_id):
         """Verify if the series is complete"""
         assert series_id in self.open_series
-        if self.open_series[series_id]["total"] == self.open_series[series_id]["msg-count"]:
-            return True
-        else:
-            return False
+        return (
+            self.open_series[series_id]["total"]
+            == self.open_series[series_id]["msg-count"]
+        )
 
     def is_message_valid(self, message):
         """Check if message belongs to open series and it was not seen earlier
@@ -373,7 +368,7 @@ class Comparator(QueuedBase):
         payload = self._cleanup_data(payload)
         payload["type"] = type_
         source, channel = payload["source"].split(".")
-        rk = "{}.{}.{}.{}".format(type_, "compared", source, channel)
+        rk = f"{type_}.compared.{source}.{channel}"
         body = json.dumps(payload)
         self.publish_output(routing_key=rk, body=body)
 
@@ -411,7 +406,7 @@ class Comparator(QueuedBase):
     def _process_input(self, data):
         self.validate_bl_headers(data)
         if not self.state.is_message_valid(data):
-            raise n6QueueProcessingException("Invalid message for a series: {}".format(data))
+            raise n6QueueProcessingException(f"Invalid message for a series: {data}")
         self.state.update_series(data)
         self.set_timeout(data["source"], data["_bl-series-id"])
         self.process_event(data)

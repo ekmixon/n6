@@ -174,7 +174,7 @@ class CollectorWithStateMixin(object):
     def get_cache_file_name(self):
         source_channel = self.get_source_channel()
         source = self.get_source(source_channel=source_channel)
-        return '{}.{}.pickle'.format(source, self.__class__.__name__)
+        return f'{source}.{self.__class__.__name__}.pickle'
 
     def make_default_state(self):
         return None
@@ -532,7 +532,7 @@ class BaseCollector(CollectorConfigMixin, QueuedBase, AbstractBaseCollector):
 
         if self.type in ('file', 'blacklist'):
             try:
-                properties.update({'content_type': self.content_type})
+                properties['content_type'] = self.content_type
             except AttributeError as exc:
                 LOGGER.critical("Type file or blacklist must set content_type attribute : %r", exc)
                 raise
@@ -757,11 +757,7 @@ class BaseUrlDownloaderCollector(BaseCollector):
         start = datetime.datetime.utcnow()
         while not downloaded:
 
-            if data_dict is not None:
-                data_dict = json.loads(data_dict)
-            else:
-                data_dict = None
-
+            data_dict = json.loads(data_dict) if data_dict is not None else None
             result = cls._download_url(url, data_dict, auth_user, auth_passwd)
 
             if result is None:
@@ -813,8 +809,7 @@ class BaseUrlDownloaderCollector(BaseCollector):
         return data
 
     def _try_to_set_http_last_modified(self, headers):
-        http_header = headers.get(self._http_last_modified_header)
-        if http_header:
+        if http_header := headers.get(self._http_last_modified_header):
             for dt_format in self._http_datetime_formats:
                 try:
                     parsed_datetime = datetime.datetime.strptime(http_header, dt_format)
@@ -850,11 +845,7 @@ class BaseRSSCollector(BaseOneShotCollector, BaseUrlDownloaderCollector):
         else:
             diff = self.current_rss
 
-        if diff:
-            return json.dumps(list(diff))
-        else:
-            # if there are no differences publish empty Json
-            return json.dumps([])
+        return json.dumps(list(diff)) if diff else json.dumps([])
 
     def rss_item_to_relevant_data(self, item):
         """
@@ -928,8 +919,7 @@ class BaseTimeOrderedRowsCollector(CollectorWithStateMixin, BaseCollector):
         self._state = self.load_state()
         orig_data = self.obtain_orig_data()
         all_rows = self.split_orig_data_into_rows(orig_data)
-        fresh_rows = self.get_fresh_rows_only(all_rows)
-        if fresh_rows:
+        if fresh_rows := self.get_fresh_rows_only(all_rows):
             self._selected_data = self.prepare_selected_data(fresh_rows)
             super(BaseTimeOrderedRowsCollector, self).run_handling()
 
@@ -1137,9 +1127,7 @@ class BaseTimeOrderedRowsCollector(CollectorWithStateMixin, BaseCollector):
         if not self.should_row_be_used(row):
             return None
         raw_row_time = self.extract_raw_row_time(row)
-        if raw_row_time is None:
-            return None
-        return self.clean_row_time(raw_row_time)
+        return None if raw_row_time is None else self.clean_row_time(raw_row_time)
 
     def should_row_be_used(self, row):
         """
@@ -1280,7 +1268,7 @@ class BaseDownloadingCollector(BaseCollector):
         prop_kwargs = super(BaseDownloadingCollector,
                             self).get_output_prop_kwargs(**processed_data)
         if self.http_last_modified:
-            prop_kwargs['headers'].setdefault('meta', dict())
+            prop_kwargs['headers'].setdefault('meta', {})
             prop_kwargs['headers']['meta']['http_last_modified'] = str(self.http_last_modified)
         return prop_kwargs
 
@@ -1321,6 +1309,9 @@ def entry_point_factory(module):
     for collector_class in all_subclasses(AbstractBaseCollector):
         if (not collector_class.__module__.endswith('.generic') and
               not collector_class.__name__.startswith('_')):
-            setattr(module, "%s_main" % collector_class.__name__,
-                    generate_collector_main(collector_class))
+            setattr(
+                module,
+                f"{collector_class.__name__}_main",
+                generate_collector_main(collector_class),
+            )
 

@@ -324,9 +324,9 @@ class AuditLog(object):
 
     @staticmethod
     def _prepare_entry_builder_for_delete(model_instance_wrapper):
-        builder = _AuditLogEntryBuilder(model_instance_wrapper.get_identifying_data_dict(),
-                                        operation='delete')
-        return builder
+        return _AuditLogEntryBuilder(
+            model_instance_wrapper.get_identifying_data_dict(), operation='delete'
+        )
 
     @classmethod
     @contextlib.contextmanager
@@ -367,8 +367,7 @@ class AuditLog(object):
         meta_items = self._make_meta_items(session)
         for builder in self._get_entry_builders_list_from(transaction):
             builder.update_subdict('meta', meta_items)
-            entry = builder()
-            yield entry
+            yield builder()
 
     def _make_meta_items(self, session):
         return dict(self._external_meta_items_getter(),
@@ -557,7 +556,7 @@ class _ModelInstanceWrapper(object):
                 jsonable_value = self._get_jsonable_attr_value(name)
                 jsonable_value_old = self._get_jsonable_attr_value_old(name, history)
                 if jsonable_value_old is not None:
-                    name_old = name + '.old'
+                    name_old = f'{name}.old'
                     yield name_old, jsonable_value_old
                 yield name, jsonable_value
 
@@ -673,7 +672,7 @@ class _ModelInstanceWrapper(object):
         # type: (String) -> bool
         prop = self._mapper.attrs[name]
         assert isinstance(prop, MapperProperty) and hasattr(prop, 'key') and prop.key == name
-        return bool(getattr(prop, 'uselist', False))
+        return getattr(prop, 'uselist', False)
 
     def _verify_collection_is_list(self, collection):
         # type: (Any) -> None
@@ -795,10 +794,10 @@ class _AuditLogEntryBuilder(DictWithSomeHooks):
         operation = self._verify_and_get_operation()
         required_keys = (self.REQUIRED_GENERIC_FINAL_KEYS |
                          self.OPERATION_TO_REQUIRED_FINAL_KEYS[operation])
-        missing_keys = required_keys.difference(self)
-        if missing_keys:
-            raise ValueError('the following required keys are missing: {}'.format(
-                ', '.join(map(repr, sorted(missing_keys)))))
+        if missing_keys := required_keys.difference(self):
+            raise ValueError(
+                f"the following required keys are missing: {', '.join(map(repr, sorted(missing_keys)))}"
+            )
 
     def _verify_and_get_operation(self):
         key = 'operation'

@@ -25,8 +25,11 @@ class BadipsServerExploitCollector(BaseUrlDownloaderCollector, BaseOneShotCollec
 
     @staticmethod
     def _add_fields_name(ips, category_root, category_leaf):
-        formatted_ips_and_name_list = ('{};{} {} attack'.format(ip, category_leaf, category_root)
-                                       for ip in ips.rstrip('\n').split('\n'))
+        formatted_ips_and_name_list = (
+            f'{ip};{category_leaf} {category_root} attack'
+            for ip in ips.rstrip('\n').split('\n')
+        )
+
         return '\n'.join(formatted_ips_and_name_list)
 
 

@@ -250,12 +250,10 @@ class NotificationTimeInlineFormAdmin(InlineFormAdmin):
 class CustomColumnListView(N6ModelView):
 
     def _set_list_of_form_columns(self, model):
-        pk_columns = []
         fk_columns = []
         sorted_columns = []
         inspection = inspect(model)
-        for pk in inspection.primary_key:
-            pk_columns.append(pk.name)
+        pk_columns = [pk.name for pk in inspection.primary_key]
         fk_constraints = model.__table__.foreign_keys
         for fk in fk_constraints:
             if hasattr(fk, 'constraint') and hasattr(fk.constraint, 'columns'):

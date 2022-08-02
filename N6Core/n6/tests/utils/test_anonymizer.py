@@ -38,7 +38,7 @@ class TestAnonymizer__input_callback(TestCaseMixin, unittest.TestCase):
     def setUp(self):
         self.event_type = 'bl-update'
         self.event_data = {'some...': 'content...', 'id': 'some id...'}
-        self.routing_key = self.event_type + '.filtered.*.*'
+        self.routing_key = f'{self.event_type}.filtered.*.*'
         self.body = json.dumps(self.event_data)
         self.resource_to_org_ids = {}
 
@@ -727,7 +727,7 @@ class TestAnonymizer___get_result_dicts_and_output_body(TestCaseMixin, unittest.
             del event_data[key]
         resource_to_org_ids = {'foo': {'bar'}, 'baz': {'spam', 'ham'}}
         with patch('n6.utils.anonymizer.LOGGER') as LOGGER_mock, \
-             self.assertRaises(exc_type):
+                 self.assertRaises(exc_type):
             self.meth._get_result_dicts_and_output_body(
                 event_type,
                 event_data,
@@ -876,7 +876,7 @@ class TestAnonymizer___publish_output_data(TestCaseMixin, unittest.TestCase):
         ]
 
         with patch('n6.utils.anonymizer.LOGGER') as LOGGER_mock, \
-             self.assertRaises(exc_type):
+                 self.assertRaises(exc_type):
             self.meth._publish_output_data(
                 sen.event_type,
                 resource_to_org_ids,

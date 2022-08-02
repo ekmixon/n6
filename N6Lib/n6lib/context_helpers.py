@@ -891,8 +891,7 @@ class ThreadLocalContextDeposit(ThreadLocalNamespace):
         if (outermost_context_factory is None
               and context_factory is not NotImplemented):
             outermost_context_factory = context_factory
-        context_stack = self._context_stack
-        if context_stack:
+        if context_stack := self._context_stack:
             if context_factory is None:
                 context = self.context_count
             elif context_factory is NotImplemented:
@@ -910,12 +909,11 @@ class ThreadLocalContextDeposit(ThreadLocalNamespace):
                     '`with` per thread is allowed)'.format(self))
             else:
                 context = context_factory()
+        elif outermost_context_factory is None:
+            context = self.context_count
+            assert context == 0
         else:
-            if outermost_context_factory is None:
-                context = self.context_count
-                assert context == 0
-            else:
-                context = outermost_context_factory()
+            context = outermost_context_factory()
         self._context_stack.append(context)
         return context
 
@@ -1352,9 +1350,8 @@ class ThreadLocalContextDeposit(ThreadLocalNamespace):
         if context_stack:
             if context_finalizer is not None:
                 return context_finalizer(context, exc_type, exc_value, exc_traceback)
-        else:
-            if outermost_context_finalizer is not None:
-                return outermost_context_finalizer(context, exc_type, exc_value, exc_traceback)
+        elif outermost_context_finalizer is not None:
+            return outermost_context_finalizer(context, exc_type, exc_value, exc_traceback)
         return None
 
 
@@ -1479,7 +1476,7 @@ def force_exit_on_any_remaining_entered_contexts(context_manager,
         suppressed_exc_class = ()
     this_func_name = force_exit_on_any_remaining_entered_contexts.__name__
     exit_exc_name = ContextManagerForcedExit.__name__
-    exit_exc = ContextManagerForcedExit('thrown by {}'.format(this_func_name))
+    exit_exc = ContextManagerForcedExit(f'thrown by {this_func_name}')
     for _ in xrange(max_exit_attempts):
         try:
             type(context_manager).__exit__(context_manager,

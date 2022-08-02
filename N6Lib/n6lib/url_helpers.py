@@ -654,14 +654,12 @@ def _get_before_host(match):
 
 def _get_host(match, rmzone):
     assert match.group('host')
-    if match.group('ipv6_addr'):
-        before_ipv6_addr = _get_before_ipv6_addr(match)
-        ipv6_addr = _get_ipv6_addr(match)
-        after_ipv6_addr = _get_after_ipv6_addr(match, rmzone)
-        host = before_ipv6_addr + ipv6_addr + after_ipv6_addr
-    else:
-        host = _get_hostname_or_ip(match)
-    return host
+    if not match.group('ipv6_addr'):
+        return _get_hostname_or_ip(match)
+    before_ipv6_addr = _get_before_ipv6_addr(match)
+    ipv6_addr = _get_ipv6_addr(match)
+    after_ipv6_addr = _get_after_ipv6_addr(match, rmzone)
+    return before_ipv6_addr + ipv6_addr + after_ipv6_addr
 
 
 def _get_before_ipv6_addr(match):
@@ -704,9 +702,7 @@ def _convert_ipv4_to_ipv6_suffix(ipv6_suffix_in_ipv4_format):
 def _get_after_ipv6_addr(match, rmzone):
     after_ipv6_addr = match.group('after_ipv6_addr')
     assert after_ipv6_addr and after_ipv6_addr.endswith(']')
-    if rmzone:
-        return ']'
-    return lower_if_pure_ascii(after_ipv6_addr)
+    return ']' if rmzone else lower_if_pure_ascii(after_ipv6_addr)
 
 
 def _get_hostname_or_ip(match):
@@ -720,9 +716,11 @@ def _get_hostname_or_ip(match):
 
 def _get_port(match, scheme):
     port = match.group('port')
-    if (port is None
-          or port == ':'
-          or port == ':{}'.format(URL_SCHEME_TO_DEFAULT_PORT.get(scheme))):
+    if (
+        port is None
+        or port == ':'
+        or port == f':{URL_SCHEME_TO_DEFAULT_PORT.get(scheme)}'
+    ):
         port = ''
     return port
 

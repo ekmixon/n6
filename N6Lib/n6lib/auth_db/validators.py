@@ -48,9 +48,7 @@ _HEXDIGITS_LOWERCASE = frozenset(string.hexdigits.lower())
 def _to_none_if_empty_or_whitespace(val):
     if not isinstance(val, basestring):
         raise FieldValueError(public_message='Illegal type of value for a string-type field.')
-    if not val.strip():
-        return None
-    return val
+    return val if val.strip() else None
 
 
 def _to_unicode(val):
@@ -85,13 +83,16 @@ def _ascii_only_ldap_safe_to_unicode_stripped(val):
     if val.startswith('#'):
         raise FieldValueError(
             public_message='Value {value!r} starts with illegal "#" prefix.'.format(value=val))
-    illegal_characters = LDAP_UNSAFE_CHARACTERS.intersection(val)
-    if illegal_characters:
+    if illegal_characters := LDAP_UNSAFE_CHARACTERS.intersection(val):
         raise FieldValueError(
             public_message='Value {value!r} contains illegal character(s): {chars}.'.format(
                 value=val,
-                chars=', '.join(sorted("'{}'".format(ascii_str(ch))
-                                       for ch in illegal_characters))))
+                chars=', '.join(
+                    sorted(f"'{ascii_str(ch)}'" for ch in illegal_characters)
+                ),
+            )
+        )
+
     return val
 
 

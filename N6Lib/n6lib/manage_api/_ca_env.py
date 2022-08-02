@@ -234,13 +234,12 @@ class DirectoryStructure(object):
         try:
             value = ConfigString(value)
         except ValueError as exc:
-            raise InvalidSSLConfigError("SSL config is not valid: {}.".format(exc), exc)
+            raise InvalidSSLConfigError(f"SSL config is not valid: {exc}.", exc)
         ca_opt_pattern = value.get_opt_value('ca.default_ca') + '.{}'
 
         value = self._get_openssl_config_with_substituted_paths(ca_opt_pattern, value)
 
-        pkcs11_opts_dict = self.opts.get('pkcs11_opts_dict')
-        if pkcs11_opts_dict:
+        if pkcs11_opts_dict := self.opts.get('pkcs11_opts_dict'):
             pkcs11_opts = PKCS11_OPTS_PATTERN.format(**pkcs11_opts_dict)
             value = value.insert_above('ca', pkcs11_opts)
             value = value.remove(ca_opt_pattern.format('private_key'))
@@ -251,10 +250,7 @@ class DirectoryStructure(object):
     def _get_openssl_config_with_substituted_paths(self, ca_opt_pattern, value):
         value = self._substitute_path(ca_opt_pattern, value, 'dir', osp.dirname(self.path))
 
-        # unify temporary environment paths and config paths,
-        # so they do not differ when used by OpenSSL
-        paths_mapping = self.opts.get('paths_to_substitute')
-        if paths_mapping:
+        if paths_mapping := self.opts.get('paths_to_substitute'):
             for opt_name, tmp_path in paths_mapping.iteritems():
                 value = self._substitute_path(ca_opt_pattern, value, opt_name, tmp_path)
 
@@ -263,7 +259,7 @@ class DirectoryStructure(object):
 
     def _substitute_path(self, ca_opt_pattern, value, opt_name, tmp_path):
         config_opt = ca_opt_pattern.format(opt_name)
-        return value.substitute(config_opt, '{} = {}'.format(opt_name, tmp_path))
+        return value.substitute(config_opt, f'{opt_name} = {tmp_path}')
 
 
     def _create_file(self):
@@ -484,7 +480,7 @@ def _format_openssl_serial_number(serial_number):
     serial_number = serial_number.upper()
     if len(serial_number) % 2:
         # force even number of digits
-        serial_number = '0' + serial_number
+        serial_number = f'0{serial_number}'
     # sanity check
     if not is_cert_serial_number_valid(serial_number.lower()):
         raise ValueError(

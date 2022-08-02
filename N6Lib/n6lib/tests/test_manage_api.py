@@ -76,8 +76,10 @@ class _WithMocksMixin(DBConnectionPatchMixin):
         """
         self.context_mock = None
         super(_WithMocksMixin, self).make_patches(
-            collection if collection is not None else dict(),
-            session_state if session_state is not None else dict())
+            collection if collection is not None else {},
+            session_state if session_state is not None else {},
+        )
+
         self.patch_db_connector(self.session_mock)
         self.get_config_mock = self.patch(
             'n6lib.manage_api._manage_api.ManageAPI.get_config_section',
@@ -609,10 +611,7 @@ class TestManagingEntity(_WithMocksMixin, _DBInterfaceMixin, unittest.TestCase):
         self._set_opened_cert(serial_hex)
         self._fill_db_with_certs(*self._fill_db_with_entities(in_admins_group=False))
         self.system_group_db_model.create_new(self.context_mock, name='admins')
-        with self.assertRaisesRegexp(AccessForbiddenError, r'managing user .*{}. does not '
-                                                           r'belong to .*{}. '
-                                                           r'system group'.format(cert_cn,
-                                                                                  'admins')):
+        with self.assertRaisesRegexp(AccessForbiddenError, f'managing user .*{cert_cn}. does not belong to .*admins. system group'):
             ManagingEntity(self.context_mock, self.default_internal_regex)
 
     @foreach([
@@ -622,9 +621,7 @@ class TestManagingEntity(_WithMocksMixin, _DBInterfaceMixin, unittest.TestCase):
     def test_cert_not_found(self, serial_hex):
         self._set_opened_cert(serial_hex)
         self._fill_db_with_entities(in_admins_group=True)
-        with self.assertRaisesRegexp(AccessForbiddenError, r"certificate \(serial number: .*{}.*\)"
-                                                           r" was not found "
-                                                           r"in the AuthDB".format(serial_hex)):
+        with self.assertRaisesRegexp(AccessForbiddenError, f"certificate \(serial number: .*{serial_hex}.*\) was not found in the AuthDB"):
             ManagingEntity(self.context_mock, self.default_internal_regex)
 
     @foreach([
@@ -638,9 +635,7 @@ class TestManagingEntity(_WithMocksMixin, _DBInterfaceMixin, unittest.TestCase):
         owner_component = self.add_component(self.context_mock,
                                              'other-component')
         self._fill_db_with_certs(owner, owner_component)
-        with self.assertRaisesRegexp(AccessForbiddenError, r"is not the owner of used certificate "
-                                                           r"\(serial number: "
-                                                           r".*{}.*\)".format(serial_hex)):
+        with self.assertRaisesRegexp(AccessForbiddenError, f"is not the owner of used certificate \(serial number: .*{serial_hex}.*\)"):
             ManagingEntity(self.context_mock, self.default_internal_regex)
 
     @foreach([
@@ -654,9 +649,7 @@ class TestManagingEntity(_WithMocksMixin, _DBInterfaceMixin, unittest.TestCase):
         # randomly set some revocation fields for both certificates
         user_cert.revoked_by_component_login = component.login
         component_cert.revoked_on = datetime.datetime(2018, 1, 1, 12)
-        with self.assertRaisesRegexp(AccessForbiddenError, r"managing entity's certificate "
-                                                           r"\(serial number: .*{}.*\) is "
-                                                           r"revoked".format(serial_hex)):
+        with self.assertRaisesRegexp(AccessForbiddenError, f"managing entity's certificate \(serial number: .*{serial_hex}.*\) is revoked"):
             ManagingEntity(self.context_mock, self.default_internal_regex)
 
     def test_non_internal_o(self):
@@ -665,9 +658,7 @@ class TestManagingEntity(_WithMocksMixin, _DBInterfaceMixin, unittest.TestCase):
         self._set_opened_cert('af2f68651a16f6567e07')
         new_org = self.add_org(self.context_mock, 'some-internal.org')
         self.add_user(self.context_mock, 'admin@internal.org', org=new_org, admins_group=True)
-        with self.assertRaisesRegexp(AccessForbiddenError, r"Access forbidden for the entity "
-                                                           r"using certificate with 'O' value: "
-                                                           r".*{}.*".format('some-internal.org')):
+        with self.assertRaisesRegexp(AccessForbiddenError, "Access forbidden for the entity using certificate with 'O' value: .*some-internal.org.*"):
             ManagingEntity(self.context_mock, self.default_internal_regex)
 
     def test_component_with_not_matching_ou(self):
@@ -676,16 +667,14 @@ class TestManagingEntity(_WithMocksMixin, _DBInterfaceMixin, unittest.TestCase):
         # users
         self._set_opened_cert('9956a34b77371f3931c1')
         self.add_component(self.context_mock, 'managing-component')
-        with self.assertRaisesRegexp(AccessForbiddenError, r'managing user .*{}.* was not '
-                                                           r'found'.format('managing-component')):
+        with self.assertRaisesRegexp(AccessForbiddenError, 'managing user .*managing-component.* was not found'):
             ManagingEntity(self.context_mock, self.default_internal_regex)
 
     def test_user_with_not_matching_ou(self):
         self._set_opened_cert('a1717cc76c11b4b84faf')
         org = self.add_org(self.context_mock, 'example.com')
         self.add_user(self.context_mock, 'manage@example.com', org=org, admins_group=True)
-        with self.assertRaisesRegexp(AccessForbiddenError, r'managing component .*{}.* was not '
-                                                           r'found'.format('manage@example.com')):
+        with self.assertRaisesRegexp(AccessForbiddenError, 'managing component .*manage@example.com.* was not found'):
             ManagingEntity(self.context_mock, self.default_internal_regex)
 
     @foreach([
@@ -1211,7 +1200,7 @@ class _RevokeCertTestBase(_BaseAPIActionTest):
         crl, stderr = _parse_crl_pem(crl_pem)
         self.assertFalse(stderr)
         self.assertRegexpMatches(crl, r'\ACertificate Revocation List')
-        self.assertRegexpMatches(crl, r'\bSerial Number:[ ]* {}'.format(serial_hex.upper()))
+        self.assertRegexpMatches(crl, f'\bSerial Number:[ ]* {serial_hex.upper()}')
 
     def _test_revocation(self, first_serial_hex, second_serial_hex):
         self._test(first_serial_hex, 'Some comment on why cert has been revoked.')
@@ -1226,15 +1215,12 @@ class _RevokeCertTestBase(_BaseAPIActionTest):
     def test_already_revoked(self):
         serial_nr = self.default_tested_cert_serial_nr
         self._test(serial_nr, 'lsl')
-        with self.assertRaisesRegexp(ManageAPIError,
-                                     r"The certificate with serial number: '{}' "
-                                     r"has already been revoked".format(serial_nr)):
+        with self.assertRaisesRegexp(ManageAPIError, f"The certificate with serial number: '{serial_nr}' has already been revoked"):
             self._test(serial_nr, 'asf')
 
     def test_cert_not_found(self):
         serial_nr = 'e06974c8e6'
-        with self.assertRaisesRegexp(ManageAPIError, r"Could not find certificate with "
-                                                     r"serial number: '{}'".format(serial_nr)):
+        with self.assertRaisesRegexp(ManageAPIError, f"Could not find certificate with serial number: '{serial_nr}'"):
             self._test(serial_nr, 'revocation comment')
 
     def _test_with_ca_label(self, tested_ca_label, cert_serial_hex, comment='some_comment'):
@@ -1254,9 +1240,7 @@ class _RevokeCertTestBase(_BaseAPIActionTest):
             key: val,
         }
         self.add_cert(self.context_mock, **init_kwargs)
-        with self.assertRaisesRegexp(ManageAPIError,
-                                     r"\AThe certificate with serial number: '{}' has "
-                                     r"already been revoked".format(serial_hex)):
+        with self.assertRaisesRegexp(ManageAPIError, f"\AThe certificate with serial number: '{serial_hex}' has already been revoked"):
             self._test(serial_hex, revocation_comment='Try to revoke already revoked cert')
 
 

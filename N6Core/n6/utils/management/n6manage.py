@@ -42,8 +42,7 @@ COMMON_ARG_SPECS = [
     ),
 ]
 
-COMMAND_PARSER_SPECS = []
-COMMAND_PARSER_SPECS.extend([
+COMMAND_PARSER_SPECS = [
     (
         Spec(
             'list-ca',
@@ -51,7 +50,8 @@ COMMAND_PARSER_SPECS.extend([
         ),
         [],
     )
-])
+]
+
 COMMAND_PARSER_SPECS.extend([
     (
         Spec(
@@ -308,8 +308,7 @@ def _parse_arguments(argv):
                 grp = command_parser.add_mutually_exclusive_group(required)
                 for arg_spec_args, arg_spec_kwargs in arg_spc[1:]:
                     grp.add_argument(*arg_spec_args, **arg_spec_kwargs)
-    arguments = parser.parse_args(argv[1:])
-    return arguments
+    return parser.parse_args(argv[1:])
 
 
 def _command_not_implemented(manage_api, arguments):
@@ -407,7 +406,7 @@ def _read_and_close(stream):
 
 
 def _dump_cert_into(cert_pem, cert_slug, dump_into):
-    filename = cert_slug + '.pem'
+    filename = f'{cert_slug}.pem'
     _do_dump(cert_pem, dump_into, filename)
 
 

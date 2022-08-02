@@ -305,8 +305,7 @@ class RequestPerformer(object):
             else:
                 print 'FOO modification date+time:', foo_last_modified.isoformat()
         """
-        raw_value = (self.response.headers.get(header_key) or '').strip()
-        if raw_value:
+        if raw_value := (self.response.headers.get(header_key) or '').strip():
             for dt_format in self._HTTP_DATETIME_FORMATS:
                 try:
                     return datetime.datetime.strptime(raw_value, dt_format)
@@ -339,10 +338,12 @@ class RequestPerformer(object):
 
     def _get_retry_conf(self, retries, backoff_factor):
         if retries:
-            retry_conf = Retry(backoff_factor=backoff_factor,
-                               total=retries,
-                               **self._RETRY_KWARGS_BASE)
-            return retry_conf
+            return Retry(
+                backoff_factor=backoff_factor,
+                total=retries,
+                **self._RETRY_KWARGS_BASE
+            )
+
         return None
 
     def _set_custom_session_attrs(self):

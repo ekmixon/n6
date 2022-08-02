@@ -9,9 +9,8 @@ import unittest
 
 class BlackListCompacterTests(unittest.TestCase):
     def test_unix_utils(self):
-        list_tmp_files = []
         tempfilefd_file_out, tempfile_file_out = tempfile.mkstemp(".csv_", "bl-")
-        list_tmp_files.append(( tempfilefd_file_out, tempfile_file_out ))
+        list_tmp_files = [(tempfilefd_file_out, tempfile_file_out)]
         f_sout = open(tempfile_file_out, "w")
         out = subprocess.call("which diff", stdout=f_sout, shell=True)
         self.assert_(out == 0, "diff on the board")

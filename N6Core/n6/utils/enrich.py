@@ -134,18 +134,19 @@ class Enricher(QueuedBase):
             enriched_keys.append('fqdn')
 
     def _maybe_set_address_ips(self, ip_from_url, data, ip_to_enriched_address_keys):
-        if not data.get('address'):
-            if data.get('fqdn') is None:
-                if ip_from_url:
-                    data['address'] = [{'ip': ip_from_url}]
-                    ip_to_enriched_address_keys[ip_from_url].append('ip')
-            elif not data.get('_do_not_resolve_fqdn_to_ip'):
-                _address = []
-                for ip in self.fqdn_to_ip(data.get('fqdn')):
-                    _address.append({'ip': ip})
-                    ip_to_enriched_address_keys[ip].append('ip')
-                if _address:
-                    data['address'] = _address
+        if data.get('address'):
+            return
+        if data.get('fqdn') is None:
+            if ip_from_url:
+                data['address'] = [{'ip': ip_from_url}]
+                ip_to_enriched_address_keys[ip_from_url].append('ip')
+        elif not data.get('_do_not_resolve_fqdn_to_ip'):
+            _address = []
+            for ip in self.fqdn_to_ip(data.get('fqdn')):
+                _address.append({'ip': ip})
+                ip_to_enriched_address_keys[ip].append('ip')
+            if _address:
+                data['address'] = _address
 
     def _filter_out_excluded_ips(self, data, ip_to_enriched_address_keys):
         assert 'address' in data
@@ -176,8 +177,7 @@ class Enricher(QueuedBase):
                     data['source'],
                     data['id'],
                     data['rid'])
-            asn = self.ip_to_asn(ip)
-            if asn:
+            if asn := self.ip_to_asn(ip):
                 addr['asn'] = asn
                 ip_to_enriched_address_keys[ip].append('asn')
             # CC
@@ -193,8 +193,7 @@ class Enricher(QueuedBase):
                     data['source'],
                     data['id'],
                     data['rid'])
-            cc = self.ip_to_cc(ip)
-            if cc:
+            if cc := self.ip_to_cc(ip):
                 addr['cc'] = cc
                 ip_to_enriched_address_keys[ip].append('cc')
 
@@ -225,19 +224,14 @@ class Enricher(QueuedBase):
 
     def url_to_fqdn_or_ip(self, url):
         parsed_url = urlparse.urlparse(url)
-        if parsed_url.netloc.endswith(':'):
-            # URL is probably wrong -- something like: "http://http://..."
-            return ''
-        return parsed_url.hostname
+        return '' if parsed_url.netloc.endswith(':') else parsed_url.hostname
 
     def fqdn_to_ip(self, fqdn):
         try:
             dns_result = self._resolver.query(fqdn, 'A')
         except DNSException:
             return []
-        ip_set = set()
-        for i in dns_result:
-            ip_set.add(str(i))
+        ip_set = {str(i) for i in dns_result}
         return sorted(ip_set)
 
     def ip_to_asn(self, ip):

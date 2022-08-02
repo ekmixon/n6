@@ -148,9 +148,10 @@ class EmailMessage(email.message.Message):
                 # (NOTE that all of them are instances of this class
                 # because all have been created within a call of this
                 # class' from_string()/from_file())
-                for name, content in msg.iter_filenames_and_contents(
-                             multifile_unpacking=multifile_unpacking):
-                    yield name, content
+                yield from msg.iter_filenames_and_contents(
+                    multifile_unpacking=multifile_unpacking
+                )
+
         else:
             content_type = self.get_content_type()
             payload = self.get_decoded_payload()

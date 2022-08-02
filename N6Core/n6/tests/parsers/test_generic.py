@@ -326,12 +326,19 @@ class TestBaseParser(unittest.TestCase):
         self.assertEqual(output_rk, 'foobar.parsed.ham.spam')
 
     def test__get_output_bodies(self):
-        parsed = [MagicMock(**{'__class__': RecordDict,
-                               'used_as_context_manager': True,
-                               'get_ready_json.return_value':
-                                   getattr(sentinel,
-                                           'output_body{}'.format(i))})
-                  for i in (1, 2)]
+        parsed = [
+            MagicMock(
+                **{
+                    '__class__': RecordDict,
+                    'used_as_context_manager': True,
+                    'get_ready_json.return_value': getattr(
+                        sentinel, f'output_body{i}'
+                    ),
+                }
+            )
+            for i in (1, 2)
+        ]
+
         self.mock.configure_mock(**{
             'parse.return_value': parsed,
             'get_output_message_id.side_effect': [
@@ -383,9 +390,13 @@ class TestBaseParser(unittest.TestCase):
         ])
 
     def test__get_output_bodies__record_dict_not_used_as_context_manager(self):
-        parsed = [MagicMock(**{'__class__': RecordDict,
-                               'used_as_context_manager': False})
-                  for i in (1, 2)]
+        parsed = [
+            MagicMock(
+                **{'__class__': RecordDict, 'used_as_context_manager': False}
+            )
+            for _ in (1, 2)
+        ]
+
         self.mock.configure_mock(**{'parse.return_value': parsed})
         with self.assertRaises(AssertionError):
             self.meth.get_output_bodies(sentinel.data,
@@ -891,10 +902,14 @@ class Test__get_output_bodies__results_for_concrete_parsers(unittest.TestCase):
         for base_parser_cls in (BaseParser,
                                 AggregatedEventParser,
                                 BlackListParser):
+
+
+
             class MyParser(self.MyParserMixIn, base_parser_cls):
                 def parse(self, data):
                     return  # "empty" generator
-                    yield
+
+
             parser = MyParser.__new__(MyParser)
             data = dict(self.base_data, raw='80 1024')
             with self.assertRaises(ValueError):

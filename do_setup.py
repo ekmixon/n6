@@ -55,22 +55,27 @@ def parse_arguments():
                         metavar='N6-COMPONENT-DIRECTORY',
                         help=('one or more directory names identifying n6 components, '
                               'or a special value "all" (to set up all N6* stuff)'))
-    parser.add_argument('-a', '--action',
-                        default=DEFAULT_ACTION,
-                        metavar='ARGUMENT-FOR-SETUP',
-                        help=('argument for setup.py, for example "install" or "develop" '
-                              '(default: "{}")'.format(DEFAULT_ACTION)))
+    parser.add_argument(
+        '-a',
+        '--action',
+        default=DEFAULT_ACTION,
+        metavar='ARGUMENT-FOR-SETUP',
+        help=f'argument for setup.py, for example "install" or "develop" (default: "{DEFAULT_ACTION}")',
+    )
+
     parser.add_argument('-L', '--no-n6lib',
                         action='store_true',
                         help=('disable automatic setup of N6Lib and N6SDK (by default '
                               'they are always set up before any other component)'))
-    parser.add_argument('-p', '--additional-packages',
-                        nargs='+',
-                        default=list(DEFAULT_ADDITIONAL_PACKAGES),
-                        metavar='PACKAGE',
-                        help=('names of PyPi packages to be installed after the actual '
-                              'setup (defaults: {}; note that this option overrides them)'
-                              .format(' '.join(DEFAULT_ADDITIONAL_PACKAGES))))
+    parser.add_argument(
+        '-p',
+        '--additional-packages',
+        nargs='+',
+        default=list(DEFAULT_ADDITIONAL_PACKAGES),
+        metavar='PACKAGE',
+        help=f"names of PyPi packages to be installed after the actual setup (defaults: {' '.join(DEFAULT_ADDITIONAL_PACKAGES)}; note that this option overrides them)",
+    )
+
     parser.add_argument('-P', '--no-additional-packages',
                         action='store_true',
                         help=('disable installation of any additional packages '
@@ -141,11 +146,11 @@ def configure_logging(arguments):
 
 def command(cmd):
     if venv_dir:
-        cmd = '{}/bin/{}'.format(venv_dir, cmd)
+        cmd = f'{venv_dir}/bin/{cmd}'
     LOGGER.info('executing: %r in %r', cmd, os.getcwd())
     error = bool(os.system(cmd))
     if error:
-        sys.exit('exiting after an external command error ({})'.format(cmd))
+        sys.exit(f'exiting after an external command error ({cmd})')
 
 
 def main():
@@ -166,12 +171,12 @@ def main():
 
         for dirname in arguments.components:
             os.chdir(osp.join(this_script_dir, dirname))
-            command('python setup.py {}'.format(arguments.action))
+            command(f'python setup.py {arguments.action}')
             LOGGER.info("%r setup done", dirname)
 
         os.chdir(this_script_dir)
         for pkgname in arguments.additional_packages:
-            command('pip install {}'.format(pkgname))
+            command(f'pip install {pkgname}')
             LOGGER.info("%r installed", pkgname)
 
     except SystemExit as exc:

@@ -152,8 +152,7 @@ class Recorder(QueuedBase):
         rk = rk.split('.')
         parts_rk = []
         try:
-            for i in xrange(parts):
-                parts_rk.append(rk[i])
+            parts_rk.extend(rk[i] for i in xrange(parts))
         except IndexError:
             LOGGER.warning("routing key %r contains less than %r segments", rk, parts)
         return '.'.join(parts_rk)
@@ -359,12 +358,18 @@ class Recorder(QueuedBase):
         LOGGER.debug("ID: %r NEW_EXPIRES: %r", id_event, expires)
 
         with transact:
-            rec_count = (self.session_db.query(n6NormalizedData).
-                         filter(n6NormalizedData.id == id_event).
-                         update({'expires': expires,
-                                 'modified': datetime.datetime.utcnow().replace(microsecond=0),
-                                 }))
-            if rec_count:
+            if rec_count := (
+                self.session_db.query(n6NormalizedData)
+                .filter(n6NormalizedData.id == id_event)
+                .update(
+                    {
+                        'expires': expires,
+                        'modified': datetime.datetime.utcnow().replace(
+                            microsecond=0
+                        ),
+                    }
+                )
+            ):
                 LOGGER.debug("records with the same id %r exist: %r",
                              id_event, rec_count)
             else:
@@ -405,13 +410,15 @@ class Recorder(QueuedBase):
         first_time_max = first_time_min + datetime.timedelta(days=0, seconds=1)
 
         with transact:
-            rec_count = (self.session_db.query(n6NormalizedData)
-                         .filter(
-                             n6NormalizedData.time >= first_time_min,
-                             n6NormalizedData.time <= first_time_max,
-                             n6NormalizedData.id == id_event)
-                         .update({'until': until, 'count': count}))
-            if rec_count:
+            if rec_count := (
+                self.session_db.query(n6NormalizedData)
+                .filter(
+                    n6NormalizedData.time >= first_time_min,
+                    n6NormalizedData.time <= first_time_max,
+                    n6NormalizedData.id == id_event,
+                )
+                .update({'until': until, 'count': count})
+            ):
                 LOGGER.debug("records with the same id %r exist: %r",
                              id_event, rec_count)
             else:

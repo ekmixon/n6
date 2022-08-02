@@ -98,14 +98,9 @@ class MispParser(BaseParser):
         # avoiding false positives for misp_category == 'Network activity' & n6_category == 'cnc'
         if n6_category == TO_IDS_DEPENDENT_CATEGORY_MARKER:
             to_ids = misp_attribute.get('to_ids')
-            if to_ids and str(to_ids).lower() != 'false':
-                n6_category = 'cnc'
-            else:
-                n6_category = 'other'
-
+            n6_category = 'cnc' if to_ids and str(to_ids).lower() != 'false' else 'other'
         for n6_key, misp_key in event_params.viewitems():
-            event_param = misp_attribute.get(misp_key)
-            if event_param:
+            if event_param := misp_attribute.get(misp_key):
                 # parse the parameter's value first if the event
                 # is of 'domain|ip' type
                 if misp_event_type == 'domain|ip':
@@ -135,8 +130,7 @@ class MispParser(BaseParser):
     @staticmethod
     def get_dport(comment, n6event_dict):
         dport_pattern = '(^port|.*? port) .*?(\d+).*'
-        _dport = re.search(dport_pattern, comment, re.IGNORECASE)
-        if _dport:
+        if _dport := re.search(dport_pattern, comment, re.IGNORECASE):
             n6event_dict['dport'] = _dport.groups()[1]
 
     @staticmethod
@@ -152,16 +146,13 @@ class MispParser(BaseParser):
 
     @staticmethod
     def _get_initial_restriction(misp_event):
-        misp_event_tag = misp_event.get('Tag')
-        if misp_event_tag:
+        if misp_event_tag := misp_event.get('Tag'):
             for tag in misp_event_tag:
                 _name = tag['name']
                 if 'tlp' in _name:
                     tlp = _name.split(':')[1]
                     return TLP_RESTRICTION[tlp]
-            return 'need-to-know'
-        else:
-            return 'need-to-know'
+        return 'need-to-know'
 
     def _get_min_restriction(self, data):
         meta_headers = data.get('meta')

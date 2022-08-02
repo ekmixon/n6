@@ -185,10 +185,7 @@ class TestAdjusterFactories(unittest.TestCase):
         ])
 
     def test__make_adjuster_using_data_spec__mocked_field__error_on_too_long(self):
-        for factory_kwargs in [
-            dict(),
-            dict(on_too_long=None),
-        ]:
+        for factory_kwargs in [{}, dict(on_too_long=None)]:
             rd_mock = MagicMock()
             rd_mock.data_spec.foo.clean_result_value.side_effect = FieldValueTooLongError(
                 field=sen.x,
@@ -257,8 +254,9 @@ class TestAdjusterFactories(unittest.TestCase):
 
         # too_long=<a callable object>
         adj = make_adjuster_using_data_spec(
-            'source',
-            on_too_long=lambda value, max_length: '{}.-long'.format(max_length))
+            'source', on_too_long=lambda value, max_length: f'{max_length}.-long'
+        )
+
         result = adj(rd, '0123456789abcde.-edcba9876543210' + 'a')
         self.assertEqual(result, u'32.-long')
         self.assertIsInstance(result, unicode)
@@ -923,13 +921,9 @@ class TestRecordDict(TestCaseMixin, unittest.TestCase):
                   inputs=(v, unicode(v)))
                 for v in enums
             ))
-            self._test_setitem_adjuster_error(key, (
-                'foo',
-                u'bar',
-                enums[0] + 'x',
-                123,
-                None,
-            ))
+            self._test_setitem_adjuster_error(
+                key, ('foo', u'bar', f'{enums[0]}x', 123, None)
+            )
 
     def test__setitem__count(self):
         self._test_setitem_valid('count', (
@@ -1187,65 +1181,72 @@ class TestRecordDict(TestCaseMixin, unittest.TestCase):
             self.assertNotIn('url', rd)
 
     def test__setitem__fqdn__valid_or_too_long(self):
-        self._test_setitem_valid('fqdn', (
-            S(u'www.example.com', (
-                u'www.example.com',
-                'www.EXAMPLE.com',
-                u'www.EXAMPLE.com',
-            )),
-            S(u'com', (
-                'CoM',
-                u'CoM',
-                'com'
-            )),
-            S(u'www.xn--xmpl-bta2jf.com', (
-                # internationalized domain names (unicode or UTF-8-decodable str)...
-                'www.ĘxĄmplę.Com',
-                u'www.ęxąmplę.Com',
-            )),
-            S(u'www.{}.com'.format('a' * 63), (
-                'www.{}.com'.format('a' * 63),
-                'www.{}.com'.format('A' * 63),
-                u'www.{}.com'.format('a' * 63),
-                u'www.{}.com'.format('A' * 63),
-            )),
-            S(u'www.-_mahnamana_muppetshow_.-com', (
-                'www.-_Mahnamana_MuppetShow_.-com',
-                u'www.-_Mahnamana_MuppetShow_.-com',
-            )),
-            S(u'x.' * 126 + u'pl', (       # result length: 254
-                'x.' * 126 + 'pl',         # input length: 254
-                u'x.' * 126 + u'pl',
-                # too long -> cut from left, then strip the leading '.':
-                'x.' * 127 + 'pl',         # input length: 256
-                u'x.' * 127 + u'pl',
-                'x.' * 1000 + 'pl',        # input length: some big even number
-                u'x.' * 1000 + u'pl',
-            )),
-            S(u'x.' * 124 + u'xn--2da', (  # result length: 255
-                'x.' * 124 + 'ą',          # input length: 255
-                u'x.' * 124 + u'ą',
-                # too long -> cut from left (no leading '.' to strip in this case):
-                'x.' * 125 + 'ą',          # input length: 257
-                u'x.' * 125 + u'ą',
-                'x.' * 1000 + 'ą',         # input length: some big odd number
-                u'x.' * 1000 + u'ą',
-            )),
-        ))
+        self._test_setitem_valid(
+            'fqdn',
+            (
+                S(
+                    u'www.example.com',
+                    (
+                        u'www.example.com',
+                        'www.EXAMPLE.com',
+                        u'www.EXAMPLE.com',
+                    ),
+                ),
+                S(u'com', ('CoM', u'CoM', 'com')),
+                S(
+                    u'www.xn--xmpl-bta2jf.com',
+                    (
+                        # internationalized domain names (unicode or UTF-8-decodable str)...
+                        'www.ĘxĄmplę.Com',
+                        u'www.ęxąmplę.Com',
+                    ),
+                ),
+                S(
+                    f"www.{'a' * 63}.com",
+                    (
+                        f"www.{'a' * 63}.com",
+                        f"www.{'A' * 63}.com",
+                        f"www.{'a' * 63}.com",
+                        f"www.{'A' * 63}.com",
+                    ),
+                ),
+                S(
+                    u'www.-_mahnamana_muppetshow_.-com',
+                    (
+                        'www.-_Mahnamana_MuppetShow_.-com',
+                        u'www.-_Mahnamana_MuppetShow_.-com',
+                    ),
+                ),
+                S(
+                    u'x.' * 126 + u'pl',
+                    (  # result length: 254
+                        'x.' * 126 + 'pl',  # input length: 254
+                        u'x.' * 126 + u'pl',
+                        # too long -> cut from left, then strip the leading '.':
+                        'x.' * 127 + 'pl',  # input length: 256
+                        u'x.' * 127 + u'pl',
+                        'x.' * 1000 + 'pl',  # input length: some big even number
+                        u'x.' * 1000 + u'pl',
+                    ),
+                ),
+                S(
+                    u'x.' * 124 + u'xn--2da',
+                    (  # result length: 255
+                        'x.' * 124 + 'ą',  # input length: 255
+                        u'x.' * 124 + u'ą',
+                        # too long -> cut from left (no leading '.' to strip in this case):
+                        'x.' * 125 + 'ą',  # input length: 257
+                        u'x.' * 125 + u'ą',
+                        'x.' * 1000 + 'ą',  # input length: some big odd number
+                        u'x.' * 1000 + u'ą',
+                    ),
+                ),
+            ),
+        )
 
     def test__setitem__fqdn__skipping_invalid(self):
         rd = self.rd_class()
-        for invalid in [
-                '',
-                u'www...example.com',
-                ' www.example.com',
-                u'example.com ',
-                'exam\xee\xddple.com',  # non-utf-8 data
-                'exam\xee\xddple.com'.decode('utf-8', 'surrogateescape'),
-                u'www.{}.com'.format('e' * 64),  # single label too long
-                datetime.datetime.now(),
-                None,
-        ]:
+        for invalid in ['', u'www...example.com', ' www.example.com', u'example.com ', 'exam\xee\xddple.com', 'exam\xee\xddple.com'.decode('utf-8', 'surrogateescape'), f"www.{'e' * 64}.com", datetime.datetime.now(), None]:
             rd['fqdn'] = invalid
             self.assertNotIn('fqdn', rd)
 
@@ -1702,18 +1703,21 @@ class TestRecordDict(TestCaseMixin, unittest.TestCase):
                 IterableUserDict({'o1': urls1, u'o2': urls2}),
             )),
         ))
-        self._test_setitem_adjuster_error('urls_matched', (
-            {},
-            IterableUserDict(),
-            {'o1': urls1, 'o2': []},
-            {'o1': urls1, 33 * 'o': urls2},
-            {'o1': urls1, None: urls2},
-            urls1,
-            set({'foo', 'bar'}),
-            123,
-            None,
-            datetime.datetime.now(),
-        ))
+        self._test_setitem_adjuster_error(
+            'urls_matched',
+            (
+                {},
+                IterableUserDict(),
+                {'o1': urls1, 'o2': []},
+                {'o1': urls1, 33 * 'o': urls2},
+                {'o1': urls1, None: urls2},
+                urls1,
+                {'foo', 'bar'},
+                123,
+                None,
+                datetime.datetime.now(),
+            ),
+        )
 
     def test__setitem__name__without_category(self):
         rd = self.rd_class()
@@ -1828,19 +1832,19 @@ class TestRecordDict(TestCaseMixin, unittest.TestCase):
                              u'Max-long' * 31 + u'max-lonGGGGGGG',   # too long (262)
                              'short']:
                     with patch.dict(
-                            'n6lib.record_dict.NAME_NORMALIZATION',
-                            {
-                                'm': [
-                                    (re.compile(r'\A[\-a-z]{255}\Z'), 'Length:255.'),
-                                    (re.compile(r'\A[\-a-z]{256}\Z'), 'Length:256.'),
-                                    (re.compile(r'\A[\-a-z]{262}\Z'), 'Length:262.'),
-                                ],
-                                's': [
-                                    (re.compile('\Ashort\Z'), 'Length:5.' * 300),
-                                ],
-                            }):
+                                            'n6lib.record_dict.NAME_NORMALIZATION',
+                                            {
+                                                'm': [
+                                                    (re.compile(r'\A[\-a-z]{255}\Z'), 'Length:255.'),
+                                                    (re.compile(r'\A[\-a-z]{256}\Z'), 'Length:256.'),
+                                                    (re.compile(r'\A[\-a-z]{262}\Z'), 'Length:262.'),
+                                                ],
+                                                's': [
+                                                    (re.compile('\Ashort\Z'), 'Length:5.' * 300),
+                                                ],
+                                            }):
                         rd['name'] = name
-                        self.assertTrue(rd['name'].startswith('Length:{}.'.format(len(name))))
+                        self.assertTrue(rd['name'].startswith(f'Length:{len(name)}.'))
                         self.assertTrue(len(rd['name']) <= 255)
                         self.assertIsInstance(rd['name'], unicode)
                 self.assertEqual(logger.mock_calls, [

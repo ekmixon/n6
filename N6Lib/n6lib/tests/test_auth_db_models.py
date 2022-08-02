@@ -28,8 +28,7 @@ def test_models_dunder_string_representation_methods():
         obj_str = str(obj)
         obj_unicode = unicode(obj)
 
-        assert (obj_repr.startswith('<' + cls_name) and
-                obj_repr.endswith('>'))
+        assert obj_repr.startswith(f'<{cls_name}') and obj_repr.endswith('>')
 
         assert obj_str
         if cls in MODELS_WITH_PRIMARY_KEY_BASED_STR:

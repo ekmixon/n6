@@ -168,7 +168,7 @@ class RandomEvent(ConfigMixin):
         self._possible_origin = ORIGIN_ENUMS
         self._possible_proto = PROTO_ENUMS
         self._possible_status = STATUS_ENUMS
-        self.event = dict()
+        self.event = {}
         for attr in self._possible_attrs:
             output_attribute = None
             try:
@@ -199,8 +199,7 @@ class RandomEvent(ConfigMixin):
             associated request params or possible values for
             the attribute could be found.
         """
-        attribute_getter = getattr(self, self._GETTER_PREFIX + attr, None)
-        if attribute_getter:
+        if attribute_getter := getattr(self, self._GETTER_PREFIX + attr, None):
             return attribute_getter()
         if self._attr_in_params(attr):
             return random.choice(self._params[attr])
@@ -213,11 +212,7 @@ class RandomEvent(ConfigMixin):
             return self._get_value_for_port_attr()
         if attr in self._md5_values:
             return self._get_value_for_md5_attr()
-        possible_vals = getattr(self, self._POSSIBLE_VALS_PREFIX + attr, None)
-        # if there is no specific method for a current attribute
-        # and values are not provided in request params, create
-        # an attribute from possible values
-        if possible_vals:
+        if possible_vals := getattr(self, self._POSSIBLE_VALS_PREFIX + attr, None):
             return self._create_attr_from_possible_vals(possible_vals)
         # if no condition was met, raise an exception
         raise AttributeCreationError
@@ -265,11 +260,13 @@ class RandomEvent(ConfigMixin):
         else:
             num_ips = random.randint(0, self._random_ips_max)
         result = []
-        for i in range(num_ips):
-            if param_ip_list:
-                ip = random.choice(param_ip_list)
-            else:
-                ip = self._int_to_ip(random.randint(1, self._max_ip))
+        for _ in range(num_ips):
+            ip = (
+                random.choice(param_ip_list)
+                if param_ip_list
+                else self._int_to_ip(random.randint(1, self._max_ip))
+            )
+
             asn = None
             cc = None
             # do not include asn or cc if opt.primary param is True
@@ -294,9 +291,7 @@ class RandomEvent(ConfigMixin):
                 key: value for key, value in [('ip', ip), ('asn', asn), ('cc', cc)]
                 if value is not None}
             result.append(address_item)
-        if result:
-            return result
-        return None
+        return result or None
 
     def _get_client(self):
         # in case of the 'inside' access zone, client should get events
@@ -311,8 +306,8 @@ class RandomEvent(ConfigMixin):
         return None
 
     def _get_dip(self):
-        attr_name = 'dip'
         if self.event["category"] in self._dip_categories:
+            attr_name = 'dip'
             if self._attr_in_params(attr_name):
                 return random.choice(self._params[attr_name])
             if self._include_in_event(attr_name):
@@ -349,13 +344,11 @@ class RandomEvent(ConfigMixin):
         attr_name = 'name'
         if self._attr_in_params(attr_name):
             return random.choice(self._params[attr_name])
-        if self._include_in_event(attr_name):
-            return self._event_name
-        return None
+        return self._event_name if self._include_in_event(attr_name) else None
 
     def _get_proto(self):
-        attr_name = 'proto'
         if self.event["category"] in self._dip_categories:
+            attr_name = 'proto'
             if self._attr_in_params(attr_name):
                 return random.choice(self._params[attr_name])
             elif self._include_in_event(attr_name):
@@ -437,14 +430,11 @@ class RandomEvent(ConfigMixin):
             any.
         """
         result = []
-        regex = re.compile('.*' + sub + '.*')
+        regex = re.compile(f'.*{sub}.*')
         for value in values:
-            match = regex.search(value)
-            if match:
-                result.append(match.group(0))
-        if result:
-            return random.choice(result)
-        return None
+            if match := regex.search(value):
+                result.append(match[0])
+        return random.choice(result) if result else None
 
     @staticmethod
     def _clean_input_value(val, regex):
@@ -460,10 +450,7 @@ class RandomEvent(ConfigMixin):
             Matched group of legal characters or None if there was
             no match.
         """
-        match = regex.search(val)
-        if match:
-            return match.group(0)
-        return None
+        return match.group(0) if (match := regex.search(val)) else None
 
     def _is_opt_primary(self):
         return self._params.get('opt.primary', False)
@@ -480,9 +467,7 @@ class RandomEvent(ConfigMixin):
             True if request params contain the attribute and it is not
             empty, False otherwise.
         """
-        if attr in self._params and self._params[attr]:
-            return True
-        return False
+        return bool(attr in self._params and self._params[attr])
 
     def _include_in_event(self, attr):
         """

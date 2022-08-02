@@ -230,8 +230,7 @@ class LdapAPI(SQLAuthDBConfigMixin):
             self._generate_ou_components,
             self._generate_ou_system_groups,
         ]:
-            for dn, coerced_attrs in generator():
-                yield dn, coerced_attrs
+            yield from generator()
 
     def _generate_ou_orgs(self):
         ou_orgs_dn, ou_orgs_attrs = self._make_dn_and_coerced_attrs('ou', ou='orgs')
@@ -271,16 +270,12 @@ class LdapAPI(SQLAuthDBConfigMixin):
                     #'password': <for now, it is not needed here>,
                 })
             for access_zone in ['inside', 'search', 'threats']:
-                for (subentry_dn,
-                     subentry_attrs
-                     ) in self.__generate_org_az_subentries(org_dn, org, access_zone):
-                    yield subentry_dn, subentry_attrs
+                yield from self.__generate_org_az_subentries(org_dn, org, access_zone)
 
     def __generate_org_az_subentries(self, org_dn, org, access_zone):
         assert access_zone in {'inside', 'search', 'threats'}
-        access_to = getattr(org, 'access_to_'+access_zone)
-        if access_to:
-            yield self._make_dn_and_coerced_attrs('cn', org_dn, cn='res-'+access_zone)
+        if access_to := getattr(org, f'access_to_{access_zone}'):
+            yield self._make_dn_and_coerced_attrs('cn', org_dn, cn=f'res-{access_zone}')
         for off in [False, True]:
             yield self.__make_search_result_for_org_az_channel(org_dn, org, access_zone, off)
 
@@ -288,13 +283,13 @@ class LdapAPI(SQLAuthDBConfigMixin):
         assert access_zone in {'inside', 'search', 'threats'}
         assert isinstance(off, bool)
         if off:
-            channel_cn = access_zone + '-ex'
-            subsources = getattr(org, access_zone + '_off_subsources')
-            subsource_groups = getattr(org, access_zone + '_off_subsource_groups')
+            channel_cn = f'{access_zone}-ex'
+            subsources = getattr(org, f'{access_zone}_off_subsources')
+            subsource_groups = getattr(org, f'{access_zone}_off_subsource_groups')
         else:
             channel_cn = access_zone
-            subsources = getattr(org, access_zone + '_subsources')
-            subsource_groups = getattr(org, access_zone + '_subsource_groups')
+            subsources = getattr(org, f'{access_zone}_subsources')
+            subsource_groups = getattr(org, f'{access_zone}_subsource_groups')
         return self._make_dn_and_coerced_attrs('cn', org_dn, **{
             'cn': channel_cn,
             'n6subsource-refint': [
@@ -323,8 +318,8 @@ class LdapAPI(SQLAuthDBConfigMixin):
 
     def __make_search_result_for_org_group_az_channel(self, org_group_dn, org_group, access_zone):
         assert access_zone in {'inside', 'search', 'threats'}
-        subsources = getattr(org_group, access_zone + '_subsources')
-        subsource_groups = getattr(org_group, access_zone + '_subsource_groups')
+        subsources = getattr(org_group, f'{access_zone}_subsources')
+        subsource_groups = getattr(org_group, f'{access_zone}_subsource_groups')
         return self._make_dn_and_coerced_attrs('cn', org_group_dn, **{
             'cn': access_zone,
             'n6subsource-refint': [
@@ -417,8 +412,9 @@ class LdapAPI(SQLAuthDBConfigMixin):
 
     def _generate_coerced_search_res_attrs(self, attrs):
         for key, value in attrs.iteritems():
-            attr_values = list(self._generate_coerced_search_res_attr_values(value))
-            if attr_values:
+            if attr_values := list(
+                self._generate_coerced_search_res_attr_values(value)
+            ):
                 yield key, attr_values
 
     def _generate_coerced_search_res_attr_values(self, value_or_seq):
@@ -449,13 +445,20 @@ class LdapAPI(SQLAuthDBConfigMixin):
     def _make_dn(self, rdn_type, *unescaped_rdn_values, **kwargs):
         parent = kwargs.pop('parent', None)
         if kwargs:
-            raise TypeError('unexpected keyword arguments: {}'
-                            .format(', '.join(map(repr, sorted(kwargs)))))
-        parent_dn = (LDAP_TREE_ROOT_DN if parent is None
-                     else (parent if parent.endswith(LDAP_TREE_ROOT_DN)
-                           else '{},{}'.format(parent, LDAP_TREE_ROOT_DN)))
+            raise TypeError(
+                f"unexpected keyword arguments: {', '.join(map(repr, sorted(kwargs)))}"
+            )
+
+        parent_dn = (
+            LDAP_TREE_ROOT_DN
+            if parent is None
+            else parent
+            if parent.endswith(LDAP_TREE_ROOT_DN)
+            else f'{parent},{LDAP_TREE_ROOT_DN}'
+        )
+
         rdn = self._make_rdn(rdn_type, *unescaped_rdn_values)
-        return '{},{}'.format(rdn, parent_dn)
+        return f'{rdn},{parent_dn}'
 
     def _make_rdn(self, rdn_type, *unescaped_rdn_values):
         return ldap.dn.dn2str([
@@ -578,7 +581,7 @@ class LdapAPI(SQLAuthDBConfigMixin):
         # * the DN is a sub-DN of any of DNs from `to_be_skipped_dn_seq`.
         for dn, attrs in search_results:
             for to_be_skipped_dn in to_be_skipped_dn_seq:
-                if dn == to_be_skipped_dn or dn.endswith(',' + to_be_skipped_dn):
+                if dn == to_be_skipped_dn or dn.endswith(f',{to_be_skipped_dn}'):
                     LOGGER.warning('Skipping LDAP entry %r (see the '
                                    'related ERROR logged earlier...)', dn)
                     break
@@ -832,21 +835,20 @@ class _LdapAttrNormalizer(object):
         normalizer_meth = self._get_normalizer_meth(dn, ldap_attr_name)
         if normalizer_meth is None:
             return list(value_list)
-        else:
-            # NOTE: the following call checks an additional constraint:
-            # the value of an attribute must be ASCII-only if it is an
-            # RDN one (i.e., being a part of DN) *and* the attribute is
-            # one of those whose values are normalized (i.e., for whom
-            # `normalizer_meth` is not None); thanks to this constraint
-            # we avoid potential str-vs-unicode-inequality-related
-            # discrepancies between DNs and normalized attribute
-            # values...
-            self._check_attr_is_ascii_only_if_rdn(dn, ldap_attr_name)
-            return list(self._generate_normalized_values(
-                dn,
-                ldap_attr_name,
-                value_list,
-                normalizer_meth))
+        # NOTE: the following call checks an additional constraint:
+        # the value of an attribute must be ASCII-only if it is an
+        # RDN one (i.e., being a part of DN) *and* the attribute is
+        # one of those whose values are normalized (i.e., for whom
+        # `normalizer_meth` is not None); thanks to this constraint
+        # we avoid potential str-vs-unicode-inequality-related
+        # discrepancies between DNs and normalized attribute
+        # values...
+        self._check_attr_is_ascii_only_if_rdn(dn, ldap_attr_name)
+        return list(self._generate_normalized_values(
+            dn,
+            ldap_attr_name,
+            value_list,
+            normalizer_meth))
 
     def _get_normalizer_meth(self, dn, ldap_attr_name):
         if self._is_regular_n6_attr(ldap_attr_name):
@@ -1037,7 +1039,7 @@ class _LdapAttrNormalizer(object):
 
     def _normalize_n6cert_request(self, val):
         lines = self._ascii_only_to_unicode_stripped(val).splitlines()
-        return str('\n'.join(lines)) + '\n'
+        return '\n'.join(lines) + '\n'
 
     def _normalize_n6email_notifications_language(self, val):
         return self._ascii_only_to_unicode_stripped(val).lower()

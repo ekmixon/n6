@@ -103,7 +103,8 @@ class _AuthAPILdapDataBasedMethodTestMixIn(object):
             for args in error_calls_args))
         self.assertEqual(
             problematic_org_ids,
-            set(self._pick_o(args[1]) for args in error_calls_args))
+            {self._pick_o(args[1]) for args in error_calls_args},
+        )
 
     @staticmethod
     def _pick_o(s):
@@ -3100,7 +3101,7 @@ class TestInsideCriteriaResolver__get_client_org_ids_and_urls_matched(TestCaseMi
     def _make_record_dict(self, rd_content):
         with self.assertStateUnchanged(self.RD_BASE, rd_content):
             actual_rd_content = dict(self.RD_BASE)
-            actual_rd_content.update(rd_content)
+            actual_rd_content |= rd_content
             actual_rd_content.setdefault('category', self.DEFAULT_CATEGORY)
             return RecordDict(actual_rd_content)
 

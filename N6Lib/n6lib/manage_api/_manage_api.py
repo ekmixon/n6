@@ -127,7 +127,10 @@ def db_property_factory(db_obj_attr_name):
                                          "table represented by the {!r} "
                                          "object".format(self.property_name, cert_db_obj))
             return super(database_property, self).__get__(instance, owner)
-    database_property.__name__ = '{}__{}'.format(database_property.__name__, db_obj_attr_name)
+    database_property.__name__ = (
+        f'{database_property.__name__}__{db_obj_attr_name}'
+    )
+
     return database_property
 
 
@@ -260,10 +263,9 @@ class ManageAPIAuthDBConnector(SQLAuthDBConnector):
                                   self).get_ssl_related_create_engine_kwargs()
         if not ssl_engine_kwargs:
             raise ManageAPIError(
-                'Auth DB connection config for {} (section `{}`) '
-                'has to specify SSL-related options'.format(
-                    self.__class__.__name__,
-                    self.config_section))
+                f'Auth DB connection config for {self.__class__.__name__} (section `{self.config_section}`) has to specify SSL-related options'
+            )
+
         self._ssl_opts = ssl_engine_kwargs['connect_args']['ssl']
         return ssl_engine_kwargs
 
@@ -310,7 +312,7 @@ class ManageAPIAuthDBConnector(SQLAuthDBConnector):
                 raise ManageAPIError("Execution of the SQL statement: {!r} caused "
                                      "an error: {!r}".format(exc.statement, exc.message))
             except Exception as exc:
-                raise ManageAPIError("Fatal error: {}".format(ascii_str(exc)))
+                raise ManageAPIError(f"Fatal error: {ascii_str(exc)}")
 
     def set_manage_api_specific_audit_log_meta_items(self, managing_entity):
         assert isinstance(managing_entity, ManagingEntity)
@@ -607,8 +609,7 @@ class ManageAPI(ConfigMixin):
                                     self._manage_api_config_section,
                                     self._settings,
                                     must_have_profile=True)
-            crl_pem = ca_cert.generate_crl_pem()
-            return crl_pem
+            return ca_cert.generate_crl_pem()
 
 
 class _BaseCertFile(object):
@@ -644,7 +645,8 @@ class _BaseCertFile(object):
                 CERTIFICATE_SERIAL_NUMBER_HEXDIGIT_NUM)
         except UnexpectedCertificateDataError as exc:
             raise ManageAPIError(
-                'Problem with the certificate subject serial number: {}'.format(exc))
+                f'Problem with the certificate subject serial number: {exc}'
+            )
 
     def get_subject_dict(self):
         raise TypeError('Cannot call abstract method')
@@ -658,9 +660,11 @@ class _BaseCertFile(object):
             return load_cert_string(cert_str, self.cert_pem_format)
         except Exception as exc:
             if self._helper_id:
-                raise ManageAPIError('Not a valid certificate PEM string ({}) '
-                                     'for: {}'.format(exc, self._helper_id))
-            raise ManageAPIError('Not a valid certificate PEM string ({})'.format(exc))
+                raise ManageAPIError(
+                    f'Not a valid certificate PEM string ({exc}) for: {self._helper_id}'
+                )
+
+            raise ManageAPIError(f'Not a valid certificate PEM string ({exc})')
 
     def get_valid_from(self):
         return get_cert_not_before(self.parsed_cert_file)
@@ -709,9 +713,9 @@ class ManagingEntityCertFile(_BaseCertFile):
         try:
             return get_cert_subject_dict(self.parsed_cert_file, include_ou=True)
         except UnexpectedCertificateDataError as exc:
-            raise AccessForbiddenError("Access forbidden for the entity using "
-                                       "certificate with subject '{}', which fails to meet "
-                                       "the requirements: {}".format(self.subject, ascii_str(exc)))
+            raise AccessForbiddenError(
+                f"Access forbidden for the entity using certificate with subject '{self.subject}', which fails to meet the requirements: {ascii_str(exc)}"
+            )
 
 
 class CertFile(_BaseCertFile):
@@ -734,9 +738,7 @@ class CertFile(_BaseCertFile):
         self._ca_profile = ca.profile
         self._ca_file_obj = CACertFile(ca_cert_pem, helper_id='CA: {!r}'.format(ca.ca_label))
         if not verify_cert(self.parsed_cert_file, self._ca_file_obj.parsed_cert_file):
-            raise ManageAPIError(
-                    'Verification of certificate of {} failed'
-                    .format(self.subject))
+            raise ManageAPIError(f'Verification of certificate of {self.subject} failed')
         self.is_client_cert = is_client_cert(self.parsed_cert_file)
         self.is_server_cert = is_server_cert(self.parsed_cert_file)
         self.serial_number = self.get_serial_number()
@@ -749,8 +751,9 @@ class CertFile(_BaseCertFile):
             return get_cert_subject_dict(self.parsed_cert_file,
                                          include_ou=(self._ca_profile == SERVICE_CA_PROFILE_NAME))
         except UnexpectedCertificateDataError as exc:
-            raise ManageAPIError("Certificate's subject ('{}') does not meet "
-                                 "the requirements: {}".format(self.subject, ascii_str(exc)))
+            raise ManageAPIError(
+                f"Certificate's subject ('{self.subject}') does not meet the requirements: {ascii_str(exc)}"
+            )
 
 
 class _AuthDBInterfaceMixin(object):
@@ -1006,8 +1009,8 @@ class CACertificate(ConfigMixin, _AuthDBInterfaceMixin):
             return config_section_opts[ca_key_config_option_name]
         except ConfigError as exc:
             raise ManageAPIError(
-                'Problem with getting the CA key path '
-                'from the config: {}'.format(ascii_str(exc)))
+                f'Problem with getting the CA key path from the config: {ascii_str(exc)}'
+            )
 
     @property
     def ca_label(self):
@@ -1137,7 +1140,7 @@ class _CertificateBase(_AuthDBInterfaceMixin):
     def _get_slug(self):
         """A filename-and-URL-friendly text label of the certificate"""
         parts = [self.ca_cert_label, self.serial_hex, self._subject_dict['cn']]
-        return str('-'.join(parts)).translate(SLUG_TRANS)
+        return '-'.join(parts).translate(SLUG_TRANS)
 
     @database_property
     def serial_hex(self):
@@ -1598,10 +1601,10 @@ class CSRFile(object):
         try:
             return load_request_string(csr_pem)
         except Exception as exc:
-            raise ManageAPIError('Not a valid CSR in the PEM format ({})'.format(exc))
+            raise ManageAPIError(f'Not a valid CSR in the PEM format ({exc})')
 
     def verify_csr(self, cert_file):
         if not verify_request(self.parsed_csr, cert_file.parsed_cert_file):
             raise ManageAPIError(
-                'CSR of {} does not match the certificate of {}'.format(self.subject,
-                                                                        cert_file.subject))
+                f'CSR of {self.subject} does not match the certificate of {cert_file.subject}'
+            )

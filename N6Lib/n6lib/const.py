@@ -97,8 +97,7 @@ CLIENT_ORGANIZATION_MAX_LENGTH = 32
 # see: RecordDict.adjust_name()); a value can be, instead of
 # a set, a name of another category being a key in the dict
 CATEGORY_TO_NORMALIZED_NAME = {
-    # please maintain alphabetical order for readability!
-    'bots': set([
+    'bots': {
         'citadel',
         'conficker',
         'feodo',
@@ -113,12 +112,10 @@ CATEGORY_TO_NORMALIZED_NAME = {
         'zeroaccess',
         'zeus-p2p',
         'zeus',
-    ]),
-    'cnc': 'bots',   # <- for 'cnc' use the same set as for 'bots'
-    #'malurl': set([
-    #    ## TODO...
-    # ]),
+    },
+    'cnc': 'bots',
 }
+
 
 # a dict that maps first letters of a lowercased but not fully normalized
 # value of the 'name' event attribute -- to sequences of pairs:

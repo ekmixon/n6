@@ -23,7 +23,7 @@ else:
 
 def setup_data_line_generator(filename_base):
     path_base = osp.join(setup_dir, filename_base)
-    path_glob = path_base + '*'
+    path_glob = f'{path_base}*'
     for path in glob.glob(path_glob):
         with open(path) as f:
             for raw_line in f:
@@ -52,7 +52,7 @@ def find_parsers():
     from n6.parsers.generic import BaseParser
     dirname = "n6/parsers"
     for importer, package_name, _ in pkgutil.iter_modules([dirname]):
-        full_package_name = 'n6.parsers.%s' % package_name
+        full_package_name = f'n6.parsers.{package_name}'
         if full_package_name not in sys.modules and package_name != "generic":
             module = importer.find_module(package_name
                         ).load_module(full_package_name)
@@ -62,8 +62,8 @@ def find_parsers():
         if pclass.__name__.startswith('_'):
             continue
         script_name = pclass.__name__.split(".")[-1].lower().replace("parser", "")
-        entry_name = "%s:%s_main" % (pclass.__module__, pclass.__name__.split(".")[-1])
-        console_line = "n6parser_%s = %s" % (script_name, entry_name)
+        entry_name = f'{pclass.__module__}:{pclass.__name__.split(".")[-1]}_main'
+        console_line = f"n6parser_{script_name} = {entry_name}"
         console_scripts_list.append(console_line)
 
 def find_collectors():
@@ -71,7 +71,7 @@ def find_collectors():
     from n6.collectors.generic import AbstractBaseCollector
     dirname = "n6/collectors"
     for importer, package_name, _ in pkgutil.iter_modules([dirname]):
-        full_package_name = 'n6.collectors.%s' % package_name
+        full_package_name = f'n6.collectors.{package_name}'
         if full_package_name not in sys.modules and package_name != "generic":
             module = importer.find_module(package_name
                         ).load_module(full_package_name)
@@ -81,12 +81,12 @@ def find_collectors():
         if pclass.__name__.startswith('_'):
             continue
         script_name = pclass.__name__.split(".")[-1].lower().replace("collector", "")
-        entry_name = "%s:%s_main" % (pclass.__module__, pclass.__name__.split(".")[-1])
-        console_line = "n6collector_%s = %s" % (script_name, entry_name)
+        entry_name = f'{pclass.__module__}:{pclass.__name__.split(".")[-1]}_main'
+        console_line = f"n6collector_{script_name} = {entry_name}"
         console_scripts_list.append(console_line)
 
 
-requirements = ['n6lib==' + n6_version]
+requirements = [f'n6lib=={n6_version}']
 console_scripts_list = ['n6config = n6.base.config:install_default_config']
 
 if not collectors_only:

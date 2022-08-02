@@ -57,7 +57,7 @@ class TestAggregator(TestCaseMixin, unittest.TestCase):
 
 
     @paramseq
-    def _ordered_data_to_process(cls):
+    def _ordered_data_to_process(self):
         # Three events are published, each one of a different group.
         yield param(
             input_data=[
@@ -65,27 +65,30 @@ class TestAggregator(TestCaseMixin, unittest.TestCase):
                     "id": "c4ca4238a0b923820dcc509a6f75849b",
                     "source": "testsource.testchannel",
                     "_group": "group1",
-                    "time": str(cls.starting_datetime),
+                    "time": str(self.starting_datetime),
                 },
                 {
                     "id": "c81e728d9d4c2f636f067f89cc14862c",
                     "source": "testsource.testchannel",
                     "_group": "group2",
-                    "time": str(cls.starting_datetime),
+                    "time": str(self.starting_datetime),
                 },
                 {
                     "id": "eccbc87e4b5ce2fe28308fd9f2a7baf3",
                     "source": "testsource.testchannel",
                     "_group": "group3",
-                    "time": str(cls.starting_datetime + datetime.timedelta(hours=1)),
+                    "time": str(
+                        self.starting_datetime + datetime.timedelta(hours=1)
+                    ),
                 },
             ],
             expected_ids_to_single_events=[
                 'c4ca4238a0b923820dcc509a6f75849b',
                 'c81e728d9d4c2f636f067f89cc14862c',
-                'eccbc87e4b5ce2fe28308fd9f2a7baf3'
+                'eccbc87e4b5ce2fe28308fd9f2a7baf3',
             ],
         )
+
 
         # First events of three groups are published; events
         # of "group1" and "group2" are aggregated. The last
@@ -98,71 +101,77 @@ class TestAggregator(TestCaseMixin, unittest.TestCase):
                     "id": "c4ca4238a0b923820dcc509a6f75849b",
                     "source": "testsource.testchannel",
                     "_group": "group1",
-                    "time": str(cls.starting_datetime),
+                    "time": str(self.starting_datetime),
                 },
                 {
                     "id": "c81e728d9d4c2f636f067f89cc14862c",
                     "source": "testsource.testchannel",
                     "_group": "group2",
-                    "time": str(cls.starting_datetime),
+                    "time": str(self.starting_datetime),
                 },
                 {
                     "id": "d41d8cd98f00b204e9800998ecf8426f",
                     "source": "testsource.testchannel",
                     "_group": "group3",
-                    "time": str(cls.starting_datetime),
+                    "time": str(self.starting_datetime),
                 },
                 {
                     "id": "d41d8cd98f00b204e9800998ecf8427a",
                     "source": "testsource.testchannel",
                     "_group": "group1",
-                    "time": str(cls.starting_datetime + datetime.timedelta(hours=1)),
+                    "time": str(
+                        self.starting_datetime + datetime.timedelta(hours=1)
+                    ),
                 },
                 {
                     "id": "d41d8cd98f00b204e9800998ecf8427c",
                     "source": "testsource.testchannel",
                     "_group": "group2",
-                    "time": str(cls.starting_datetime + datetime.timedelta(hours=1)),
+                    "time": str(
+                        self.starting_datetime + datetime.timedelta(hours=1)
+                    ),
                 },
                 {
                     "id": "d41d8cd98f00b204e9800998ecf8427b",
                     "source": "testsource.testchannel",
                     "_group": "group1",
-                    "time": str(cls.starting_datetime + datetime.timedelta(hours=2)),
+                    "time": str(
+                        self.starting_datetime + datetime.timedelta(hours=2)
+                    ),
                 },
                 {
                     "id": "d41d8cd98f00b204e9800998ecf8427d",
                     "source": "testsource.testchannel",
                     "_group": "group1",
-                    "time": str(cls.starting_datetime + datetime.timedelta(hours=14)),
+                    "time": str(
+                        self.starting_datetime + datetime.timedelta(hours=14)
+                    ),
                 },
             ],
             expected_ids_to_single_events=[
                 'c4ca4238a0b923820dcc509a6f75849b',
                 'c81e728d9d4c2f636f067f89cc14862c',
                 'd41d8cd98f00b204e9800998ecf8426f',
-                'd41d8cd98f00b204e9800998ecf8427d'
+                'd41d8cd98f00b204e9800998ecf8427d',
             ],
             expected_ids_to_suppressed_events={
                 'c4ca4238a0b923820dcc509a6f75849b': {
-                    '_first_time': str(cls.starting_datetime),
-                    # the 'until' value is the time of the
-                    # excluding the event that triggered
-                    # publishing of aggregated events
-                    'until': str(cls.starting_datetime + datetime.timedelta(hours=2)),
-                    # the event that triggered publishing
-                    # of aggregated events is not included
-                    # in the count, it will be published
-                    # with next group of aggregated events
+                    '_first_time': str(self.starting_datetime),
+                    'until': str(
+                        self.starting_datetime + datetime.timedelta(hours=2)
+                    ),
                     'count': 3,
                 },
                 'c81e728d9d4c2f636f067f89cc14862c': {
-                    '_first_time': str(cls.starting_datetime),
-                    'until': str(cls.starting_datetime + datetime.timedelta(hours=1)),
+                    '_first_time': str(self.starting_datetime),
+                    'until': str(
+                        self.starting_datetime + datetime.timedelta(hours=1)
+                    ),
                     'count': 2,
                 },
             },
         )
+
 
         # The latest event is 12 hours older than the last event
         # of 'group2', but not than the last event of 'group1'.
@@ -571,7 +580,7 @@ class TestAggregator(TestCaseMixin, unittest.TestCase):
 
 
     @paramseq
-    def _unordered_data_to_process(cls):
+    def _unordered_data_to_process(self):
         # The first event is published, second and third are ignored,
         # because they are older than the current time (event with
         # the time tolerance added) and older than the first event
@@ -834,11 +843,13 @@ class TestAggregator(TestCaseMixin, unittest.TestCase):
         dicts, which would be created during a regular Aggregator
         run.
         """
-        events_from_calls = []
-        for _, call_args in call_args_list:
-            events_from_calls.append({'body': json.loads(call_args['body']),
-                                      'routing_key': call_args['routing_key']})
-        return events_from_calls
+        return [
+            {
+                'body': json.loads(call_args['body']),
+                'routing_key': call_args['routing_key'],
+            }
+            for _, call_args in call_args_list
+        ]
 
 
 
@@ -902,7 +913,7 @@ class TestAggregatorDataWrapper(unittest.TestCase):
 
 
     @paramseq
-    def _test_process_new_message_data(cls):
+    def _test_process_new_message_data(self):
         yield param(
             messages=[
                 {
@@ -914,15 +925,16 @@ class TestAggregatorDataWrapper(unittest.TestCase):
             ],
             expected_source_time=datetime.datetime(2017, 6, 1, 10),
             expected_groups=[
-                cls.ExpectedHiFreqData(
+                self.ExpectedHiFreqData(
                     name='group1',
                     until=datetime.datetime(2017, 6, 1, 10),
                     first=datetime.datetime(2017, 6, 1, 10),
                     count=1,
                     msg_index_to_payload=0,
-                ),
+                )
             ],
         )
+
 
         yield param(
             messages=[
@@ -941,14 +953,14 @@ class TestAggregatorDataWrapper(unittest.TestCase):
             ],
             expected_source_time=datetime.datetime(2017, 6, 1, 12),
             expected_groups=[
-                cls.ExpectedHiFreqData(
+                self.ExpectedHiFreqData(
                     name='group1',
                     until=datetime.datetime(2017, 6, 1, 10),
                     first=datetime.datetime(2017, 6, 1, 10),
                     count=1,
                     msg_index_to_payload=0,
                 ),
-                cls.ExpectedHiFreqData(
+                self.ExpectedHiFreqData(
                     name='group2',
                     until=datetime.datetime(2017, 6, 1, 12),
                     first=datetime.datetime(2017, 6, 1, 12),
@@ -957,6 +969,7 @@ class TestAggregatorDataWrapper(unittest.TestCase):
                 ),
             ],
         )
+
 
         yield param(
             messages=[
@@ -993,14 +1006,14 @@ class TestAggregatorDataWrapper(unittest.TestCase):
             ],
             expected_source_time=datetime.datetime(2017, 6, 1, 14),
             expected_groups=[
-                cls.ExpectedHiFreqData(
+                self.ExpectedHiFreqData(
                     name='group1',
                     until=datetime.datetime(2017, 6, 1, 14),
                     first=datetime.datetime(2017, 6, 1, 10),
                     count=3,
                     msg_index_to_payload=0,
                 ),
-                cls.ExpectedHiFreqData(
+                self.ExpectedHiFreqData(
                     name='group2',
                     until=datetime.datetime(2017, 6, 1, 13),
                     first=datetime.datetime(2017, 6, 1, 12),
@@ -1009,6 +1022,7 @@ class TestAggregatorDataWrapper(unittest.TestCase):
                 ),
             ],
         )
+
 
         # Messages of the "group1" are aggregated until the message
         # from next day comes in. It triggers publishing of aggregated
@@ -1065,14 +1079,14 @@ class TestAggregatorDataWrapper(unittest.TestCase):
             ],
             expected_source_time=datetime.datetime(2017, 6, 2, 14),
             expected_groups=[
-                cls.ExpectedHiFreqData(
+                self.ExpectedHiFreqData(
                     name='group1',
                     until=datetime.datetime(2017, 6, 2, 14),
                     first=datetime.datetime(2017, 6, 2, 14),
                     count=1,
                     msg_index_to_payload=6,
                 ),
-                cls.ExpectedHiFreqData(
+                self.ExpectedHiFreqData(
                     name='group2',
                     until=datetime.datetime(2017, 6, 1, 10, 30),
                     first=datetime.datetime(2017, 6, 1, 10, 15),
@@ -1081,15 +1095,16 @@ class TestAggregatorDataWrapper(unittest.TestCase):
                 ),
             ],
             expected_buffers=[
-                cls.ExpectedHiFreqData(
+                self.ExpectedHiFreqData(
                     name='group1',
                     until=datetime.datetime(2017, 6, 1, 13),
                     first=datetime.datetime(2017, 6, 1, 10),
                     count=4,
                     msg_index_to_payload=0,
-                ),
+                )
             ],
         )
+
 
         # Messages of the "group1" are aggregated until the message
         # newer by more than 12 hours (by default) is processed.
@@ -1147,14 +1162,14 @@ class TestAggregatorDataWrapper(unittest.TestCase):
             ],
             expected_source_time=datetime.datetime(2017, 6, 1, 22, 0, 1),
             expected_groups=[
-                cls.ExpectedHiFreqData(
+                self.ExpectedHiFreqData(
                     name='group1',
                     until=datetime.datetime(2017, 6, 1, 22, 0, 1),
                     first=datetime.datetime(2017, 6, 1, 22, 0, 1),
                     count=1,
                     msg_index_to_payload=6,
                 ),
-                cls.ExpectedHiFreqData(
+                self.ExpectedHiFreqData(
                     name='group2',
                     until=datetime.datetime(2017, 6, 1, 8, 30),
                     first=datetime.datetime(2017, 6, 1, 8, 10),
@@ -1163,19 +1178,19 @@ class TestAggregatorDataWrapper(unittest.TestCase):
                 ),
             ],
             expected_buffers=[
-                cls.ExpectedHiFreqData(
+                self.ExpectedHiFreqData(
                     name='group1',
                     until=datetime.datetime(2017, 6, 1, 10),
                     first=datetime.datetime(2017, 6, 1, 7),
                     count=4,
                     msg_index_to_payload=0,
-                ),
+                )
             ],
         )
 
 
     @paramseq
-    def _test_generate_suppressed_events_for_source_data(cls):
+    def _test_generate_suppressed_events_for_source_data(self):
         # The newest message is from the next day comparing
         # to previous events from "group1" and "group2",
         # "suppressed" events for both groups should be
@@ -1184,16 +1199,17 @@ class TestAggregatorDataWrapper(unittest.TestCase):
         yield param(
             new_message={
                 "id": "c4ca4238a0b923820dcc509a6f75852b",
-                "source": cls.tested_source_channel,
+                "source": self.tested_source_channel,
                 "_group": "group1",
                 "time": "2017-06-02 10:00:01",
             },
             expected_results=[
-                cls.group1_expected_suppressed_event,
-                cls.group2_expected_suppressed_event,
-                cls.group3_expected_suppressed_event,
+                self.group1_expected_suppressed_event,
+                self.group2_expected_suppressed_event,
+                self.group3_expected_suppressed_event,
             ],
         )
+
 
         # The newest message is more than 12 hours newer
         # than the previous event of the "group1", but not
@@ -1204,14 +1220,13 @@ class TestAggregatorDataWrapper(unittest.TestCase):
         yield param(
             new_message={
                 "id": "c4ca4238a0b923820dcc509a6f75852b",
-                "source": cls.tested_source_channel,
+                "source": self.tested_source_channel,
                 "_group": "group1",
                 "time": "2017-06-01 21:10:00",
             },
-            expected_results=[
-                cls.group1_expected_suppressed_event,
-            ],
+            expected_results=[self.group1_expected_suppressed_event],
         )
+
 
         # The newest message is more than 12 hours newer
         # than the previous event of both groups, "suppressed"
@@ -1221,38 +1236,38 @@ class TestAggregatorDataWrapper(unittest.TestCase):
         yield param(
             new_message={
                 "id": "c4ca4238a0b923820dcc509a6f75852b",
-                "source": cls.tested_source_channel,
+                "source": self.tested_source_channel,
                 "_group": "group1",
                 "time": "2017-06-01 22:10:00",
             },
             expected_results=[
-                cls.group1_expected_suppressed_event,
-                cls.group2_expected_suppressed_event,
-                cls.group3_expected_suppressed_event,
+                self.group1_expected_suppressed_event,
+                self.group2_expected_suppressed_event,
+                self.group3_expected_suppressed_event,
             ],
         )
 
 
     @paramseq
-    def _test_generate_suppressed_events_after_timeout_data(cls):
+    def _test_generate_suppressed_events_after_timeout_data(self):
         # more than 24 hours has passed since processing of last
         # event for the source "testsource.testchannel"
         yield param(
             mocked_utcnow=datetime.datetime(2017, 6, 2, 15),
-            expected_inactive_sources=[
-                cls.tested_source_channel,
-            ],
+            expected_inactive_sources=[self.tested_source_channel],
         )
+
 
         # more than 24 hours has passed since processing of last
         # event for both sources
         yield param(
             mocked_utcnow=datetime.datetime(2017, 6, 2, 20, 2),
             expected_inactive_sources=[
-                cls.tested_source_channel,
-                cls.other_source_channel,
+                self.tested_source_channel,
+                self.other_source_channel,
             ],
         )
+
 
         # more than 24 hours has not passed for any of tested sources
         yield param(

@@ -133,9 +133,10 @@ class RsyncFileContextManager(object):
                 subprocess.check_output(["rsync", self._option, self._source, full_file_path],
                                         stderr=subprocess.STDOUT)
             except subprocess.CalledProcessError as exc:
-                raise RuntimeError('Cannot download source file (CalledProcessError exception '
-                                   'message: "{}"; command output: "{}")'
-                                   .format(ascii_str(exc), ascii_str(exc.output)))
+                raise RuntimeError(
+                    f'Cannot download source file (CalledProcessError exception message: "{ascii_str(exc)}"; command output: "{ascii_str(exc.output)}")'
+                )
+
             self._file = open(full_file_path)
         except:
             try:
@@ -1480,15 +1481,14 @@ class LimitedDict(collections.OrderedDict):
         <n6lib.common_helpers.StrangeSubclass object at 0x...>
         """
         s = super(LimitedDict, self).__repr__()
-        if s.endswith(')'):
-            ending = 'maxlen={})'
-            if not s.endswith('()'):
-                ending = ', ' + ending
-            return s[:-1] + ending.format(self._maxlen)
-        else:
+        if not s.endswith(')'):
             # only if super()'s __repr__ returned something weird
             # (theoretically possible in subclasses)
             return object.__repr__(self)
+        ending = 'maxlen={})'
+        if not s.endswith('()'):
+            ending = f', {ending}'
+        return s[:-1] + ending.format(self._maxlen)
 
     def __setitem__(self, key, value):
         super(LimitedDict, self).__setitem__(key, value)
@@ -1986,8 +1986,7 @@ def make_dict_delta(dict1, dict2):
         val1 = dict1[key]
         val2 = dict2[key]
         if isinstance(val1, dict) and isinstance(val2, dict):
-            subdelta = make_dict_delta(val1, val2)  # recursion
-            if subdelta:
+            if subdelta := make_dict_delta(val1, val2):
                 delta[key] = subdelta
             else:
                 assert val1 == val2
@@ -2415,7 +2414,7 @@ def picklable(func_or_class):
         count = 1
         while namespace.setdefault(name, func_or_class) is not func_or_class:
             count += 1
-            name = '{}__{}'.format(func_or_class.__name__, count)
+            name = f'{func_or_class.__name__}__{count}'
         func_or_class.__name__ = name
         func_or_class.__module__ = 'n6lib._picklable_objs'
     return func_or_class
@@ -2922,9 +2921,7 @@ def is_pure_ascii(s):
 
 # TODO: docs + tests
 def lower_if_pure_ascii(s):
-    if is_pure_ascii(s):
-        return s.lower()
-    return s
+    return s.lower() if is_pure_ascii(s) else s
 
 
 def string_as_bytes(s):
@@ -2976,9 +2973,7 @@ def formattable_as_str(s):
     >>> formattable_as_str(42)
     42
     """
-    if isinstance(s, unicode):
-        return s.encode('utf-8')
-    return s
+    return s.encode('utf-8') if isinstance(s, unicode) else s
 
 
 def with_dunder_unicode_from_str(cls):
@@ -3084,7 +3079,7 @@ def ipv4_to_int(ipv4, accept_no_dot=False):
             numbers = map(int, ipv4.split('.'))  ## FIXME: 04.05.06.0222 etc. are accepted and interpreted as decimal, should they???
             if len(numbers) != 4:
                 raise ValueError
-            if not all(0 <= num <= 0xff for num in numbers):
+            if any((0 <= num <= 0xFF for num in numbers)):
                 raise ValueError
             multiplied = [num << rot
                           for num, rot in zip(numbers, (24, 16, 8, 0))]
@@ -3266,8 +3261,11 @@ def safe_eval(node_or_string, namespace=None):
         elif isinstance(node, ast.List):
             return list(map(_convert, node.elts))
         elif isinstance(node, ast.Dict):
-            return dict((_convert(k), _convert(v)) for k, v
-                        in zip(node.keys, node.values))
+            return {
+                _convert(k): _convert(v)
+                for k, v in zip(node.keys, node.values)
+            }
+
         elif isinstance(node, ast.Name):
             if node.id in _namespace:
                 return _namespace[node.id]
@@ -3319,7 +3317,7 @@ def import_by_dotted_name(dotted_name):
     importable_name = all_name_parts[0]
     obj = import_module(importable_name)
     for part in all_name_parts[1:]:
-        importable_name += '.{}'.format(part)
+        importable_name += f'.{part}'
         try:
             obj = getattr(obj, part)
         except AttributeError:
@@ -3361,7 +3359,8 @@ def with_flipped_args(func):
     """
     def flipped_func(a, b):
         return func(b, a)
-    flipped_func.__name__ = func.__name__ + '__with_flipped_args'
+
+    flipped_func.__name__ = f'{func.__name__}__with_flipped_args'
     return flipped_func
 
 
@@ -3439,8 +3438,7 @@ def make_hex_id(length=96, additional_salt=''):
         raise TypeError('`additional_salt` must be str, not {0}'.format(
             type(additional_salt).__name__))
     hash_base = os.urandom(40) + additional_salt + '{0:.24f}'.format(time.time())
-    hex_id = hashlib.sha384(hash_base).hexdigest()[:length]
-    return hex_id
+    return hashlib.sha384(hash_base).hexdigest()[:length]
 
 
 def normalize_hex_id(hex_id, min_digit_num=0):
@@ -3522,7 +3520,7 @@ def int_id_to_hex(int_id, min_digit_num=0):
     TypeError: ...
     """
     hex_id = hex(int_id)
-    assert hex_id[:2] == '0x'
+    assert hex_id.startswith('0x')
     # get it *without* the '0x' prefix and the 'L' suffix
     # (the integer value could be a long integer)
     hex_id = hex_id[2:].rstrip('L')
@@ -3540,8 +3538,7 @@ def cleanup_src():
     from n6lib.log_helpers import get_logger
     _LOGGER = get_logger(__name__)
 
-    fail_cleanup = cleanup_resources()
-    if fail_cleanup:
+    if fail_cleanup := cleanup_resources():
         _LOGGER.warning('Fail cleanup resources: %r', fail_cleanup)
 
 

@@ -145,25 +145,24 @@ def executemany(self, query, args):
 
 # modified MySQLdb.cursors.BaseCursor._warning_check() (changes marked with `###`)
 def _warning_check(self, query=None, args=None):
-    from warnings import warn
-    if self._warnings:
-        warnings = self._get_db().show_warnings()
-        if warnings:
-            # This is done in two loops in case
-            # Warnings are set to raise exceptions.
-            for w in warnings:
-                self.messages.append((self.Warning, w))
-            for w in warnings:
-                ### orig: warn(w[-1], self.Warning, 3)
-                if warning_standard:
-                    warn(w[-1], self.Warning, 3)
-                if warning_details_to_logs:
-                        LOGGER.warning(
-                            '%s, QUERY_SQL: %r, ARGS: %r',
-                            w[-1].encode('utf-8'), query, args)
-        elif self._info:
-            self.messages.append((self.Warning, self._info))
-            warn(self._info, self.Warning, 3)
+        from warnings import warn
+        if self._warnings:
+                if warnings := self._get_db().show_warnings():
+                        # This is done in two loops in case
+                        # Warnings are set to raise exceptions.
+                        for w in warnings:
+                            self.messages.append((self.Warning, w))
+                        for w in warnings:
+                            ### orig: warn(w[-1], self.Warning, 3)
+                            if warning_standard:
+                                warn(w[-1], self.Warning, 3)
+                            if warning_details_to_logs:
+                                    LOGGER.warning(
+                                        '%s, QUERY_SQL: %r, ARGS: %r',
+                                        w[-1].encode('utf-8'), query, args)
+                elif self._info:
+                    self.messages.append((self.Warning, self._info))
+                    warn(self._info, self.Warning, 3)
 
 
 cursors.BaseCursor.execute = execute

@@ -539,8 +539,10 @@ class TimeoutCallbackManager(object):
     def status_tag(self):
         for_self = ('+' if self._is_activated()
                     else '-')
-        for_the_call = ('' if self._the_call is None
-                        else ',{}'.format(self._the_call.status_tag))
+        for_the_call = (
+            '' if self._the_call is None else f',{self._the_call.status_tag}'
+        )
+
         return for_self + for_the_call
 
     def __repr__(self):
@@ -583,17 +585,13 @@ class TimeoutCallbackManager(object):
               or cls._signal is None
               or cls._setitimer is None):
             raise RuntimeError(
-                'something wrong: it seems that {}.{}.{}() has not '
-                'been executed! (at least not successfully)'.format(
-                    base_cls.__module__,
-                    base_cls.__name__,
-                    base_cls.ensure_preparations_and_monkey_patching_done.__name__))
+                f'something wrong: it seems that {base_cls.__module__}.{base_cls.__name__}.{base_cls.ensure_preparations_and_monkey_patching_done.__name__}() has not been executed! (at least not successfully)'
+            )
+
         if not cls._in_main_thread():
             raise RuntimeError(
-                '{}.{}: operations allowed only '
-                'in the main thread!'.format(
-                    base_cls.__module__,
-                    base_cls.__name__))
+                f'{base_cls.__module__}.{base_cls.__name__}: operations allowed only in the main thread!'
+            )
 
     @protected_from_concurrency(**CONCURRENCY_PROTECTION_OPTIONS)
     def _do_activate(self):
@@ -728,8 +726,7 @@ class TimeoutCallbackManager(object):
 
     @classmethod
     def _custom_alarm_handler_of_TimeoutCallbackManager(cls, signum, frame):
-        sc = cls._scheduled_calls
-        if sc:
+        if sc := cls._scheduled_calls:
             call = sc.peek_next()
             try:
                 call.execute(signum, frame)
@@ -933,7 +930,7 @@ class _HandlerArgForRepr(object):
         self.name = name
 
     def __repr__(self):
-        return '<{}>'.format(self.name)
+        return f'<{self.name}>'
 
 
 
@@ -1030,9 +1027,7 @@ class _Call(object):
         return self._scheduled
 
     def __eq__(self, other):
-        if isinstance(other, _Call):
-            return self is other
-        return NotImplemented
+        return self is other if isinstance(other, _Call) else NotImplemented
 
     def __ne__(self, other):
         return not self == other

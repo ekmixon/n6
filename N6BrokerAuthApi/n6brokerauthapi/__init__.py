@@ -44,8 +44,7 @@ class N6BrokerAuthApiConfigHelper(ConfigMixin, BasicConfigHelper):
     def _get_auth_manager_maker(self):
         settings = self.settings
         auth_manager_maker_class = self.get_config_section(settings)['auth_manager_maker_class']
-        auth_manager_maker = auth_manager_maker_class(settings)
-        return auth_manager_maker
+        return auth_manager_maker_class(settings)
 
 
 # (see: https://github.com/rabbitmq/rabbitmq-auth-backend-http#what-must-my-web-server-do)

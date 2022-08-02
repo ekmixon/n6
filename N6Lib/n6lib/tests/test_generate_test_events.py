@@ -114,7 +114,7 @@ class TestRandomEventWithParams(unittest.TestCase):
         - category not in 'dip categories'.
         """
         params = {}
-        params.update(category)
+        params |= category
         params.update(self._STANDARD_PARAMS)
         params.update(self._SPECIAL_PARAMS)
         with standard_config_patch:
@@ -296,7 +296,7 @@ class TestExtraParams(unittest.TestCase):
         sub = self._get_sub(val)
         # set category to 'flow', to prevent randomly choosing one of
         # the 'dip' categories
-        params = {'category': 'flow', '{}.sub'.format(label): [sub]}
+        params = {'category': 'flow', f'{label}.sub': [sub]}
         with standard_config_patch:
             random_event = RandomEvent(params=params).event
         event_attr = random_event.get(label)

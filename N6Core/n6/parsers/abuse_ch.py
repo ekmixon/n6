@@ -309,8 +309,7 @@ class AbuseChRansomwareTrackerParser(BaseParser):
                 parsed['time'] = parse_iso_datetime_to_utc(row[0])
                 parsed['name'] = row[2]
                 parsed['fqdn'] = row[3]
-                ips = row[7]
-                if ips:
+                if ips := row[7]:
                     parsed['address'] = [{'ip': ip} for ip in set(ips.split('|'))]
                 if row[4]:
                     parsed['url'] = row[4]
@@ -370,8 +369,7 @@ class _AbuseChSSLBlacklistBaseParser(BaseParser):
             name = items.get('name')
             if name is not None:
                 parsed_base['name'] = name
-            binaries = items.get('binaries')
-            if binaries:
+            if binaries := items.get('binaries'):
                 fingerprint = items.get('fingerprint')
                 if fingerprint is not None:
                     parsed_base['x509fp_sha1'] = fingerprint

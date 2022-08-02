@@ -110,19 +110,17 @@ class Test_QueryProcessor__generate_query_results(unittest.TestCase):
     _UTCNOW = dt(2015, 1, 3, 17, 18, 19)
 
     # a helper that makes the expression query reprs for a given time window
-    def _win(upper_op, upper, lower):
+    def _win(self, upper, lower):
         return [
-            ("event.time >= '{0}' AND "
-             "event.time {1} '{2}'".format(
-                 lower,
-                 upper_op,
-                 upper)),
-            ("client_to_event.id = event.id AND "
-             "client_to_event.time >= '{0}' AND "
-             "client_to_event.time {1} '{2}'".format(
-                 lower,
-                 upper_op,
-                 upper)),
+            (
+                "event.time >= '{0}' AND "
+                "event.time {1} '{2}'".format(lower, self, upper)
+            ),
+            (
+                "client_to_event.id = event.id AND "
+                "client_to_event.time >= '{0}' AND "
+                "client_to_event.time {1} '{2}'".format(lower, self, upper)
+            ),
             'event.time DESC',
         ]
 
@@ -454,7 +452,7 @@ class Test_QueryProcessor__generate_query_results(unittest.TestCase):
 class Test_QueryProcessor__preprocess_raw_result_dict(TestCaseMixin, unittest.TestCase):
 
     @paramseq
-    def cases(cls):
+    def cases(self):
         yield param(
             raw_result_dict={
                 # 'SY:'-prefixed `url`, no `custom`/`url_data`

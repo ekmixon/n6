@@ -937,15 +937,14 @@ class N6DataSpec(DataSpec):
 
         col_kwargs = {'nullable': (field.in_result != 'required' and
                                    key != 'ip')}
-        col_kwargs.update(col_kwargs_updates.get(key, {}))
+        col_kwargs |= col_kwargs_updates.get(key, {})
 
         if isinstance(field, AddressField):
             for subkey, subfield in field.key_to_subfield.iteritems():
-                for name, column in self._generate_cols_from_field_spec(
-                        subkey,
-                        subfield,
-                        col_kwargs_updates):
-                    yield name, column
+                yield from self._generate_cols_from_field_spec(
+                    subkey, subfield, col_kwargs_updates
+                )
+
             yield key, Column(TextPickleType(pickler=json), **col_kwargs)
         else:
             if isinstance(field, DateTimeField):
@@ -959,13 +958,10 @@ class N6DataSpec(DataSpec):
             elif isinstance(field, IPv4Field):
                 col_args = [IPAddress]
             elif isinstance(field, UnicodeEnumField):
-                col_args = [Enum(*field.enum_values, name=(key + '_type'))]
+                col_args = [Enum(*field.enum_values, name=f'{key}_type')]
             elif isinstance(field, UnicodeField):
                 max_length = getattr(field, 'max_length', None)
-                if max_length is not None:
-                    col_args = [String(max_length)]
-                else:
-                    col_args = [Text]
+                col_args = [String(max_length)] if max_length is not None else [Text]
             elif isinstance(field, IntegerField):
                 if field.min_value is None:
                     raise NotImplementedError(
@@ -1019,7 +1015,7 @@ class N6DataSpec(DataSpec):
         anon = self.anonymized_param_keys
         for key, value_list in params.iteritems():
             if key in anon:
-                deanonymizer = getattr(self, 'deanonymize_' + key)
+                deanonymizer = getattr(self, f'deanonymize_{key}')
                 deanonymized_value_list = [
                     deanonymizer(value, auth_api) for value in value_list]
                 ## FIXME?: what to do with a `source` value being None???
@@ -1101,7 +1097,7 @@ class N6DataSpec(DataSpec):
         anon = self.anonymized_result_keys
         for key, value in result.iteritems():
             if key in anon:
-                anonymizer = getattr(self, 'anonymize_' + key)
+                anonymizer = getattr(self, f'anonymize_{key}')
                 anon_item = anonymizer(result, auth_api)
                 if anon_item is not None:
                     anon_key, anon_value = anon_item
@@ -1123,11 +1119,11 @@ class N6DataSpec(DataSpec):
                     'because it does not contain the key\n%s',
                     key, event_tag)
         orig_address = result.pop('address', None)
-        address = list(self._generate_stripped_address_items(
-            orig_address,
-            ip_to_enriched_address_keys,
-            event_tag))
-        if address:
+        if address := list(
+            self._generate_stripped_address_items(
+                orig_address, ip_to_enriched_address_keys, event_tag
+            )
+        ):
             result['address'] = address
 
     def _generate_stripped_address_items(self,
@@ -1155,11 +1151,8 @@ class N6DataSpec(DataSpec):
 
     def _get_event_tag_for_logging(self, result):
         try:
-            return (
-                '(@event whose id is {}, time is {}, modified is {})'.format(
-                    result.get('id', 'not set'),
-                    result.get('time', 'not set'),
-                    result.get('modified', 'not set')))
+            return f"(@event whose id is {result.get('id', 'not set')}, time is {result.get('time', 'not set')}, modified is {result.get('modified', 'not set')})"
+
         except (AttributeError, ValueError, TypeError):  # a bit of paranoia :)
             return '(@unknown event)'
 

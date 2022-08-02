@@ -46,9 +46,9 @@ class RLockedMock(Mock):
         with _rlock_for_rlocked_mocks:
             return Mock.__getattr__(self, name)
 
-    def __call__(*args, **kwargs):
+    def __call__(self, **kwargs):
         with _rlock_for_rlocked_mocks:
-            return Mock.__call__(*args, **kwargs)
+            return Mock.__call__(*self, **kwargs)
 
     def reset_mock(self):
         with _rlock_for_rlocked_mocks:
@@ -61,9 +61,9 @@ class RLockedMagicMock(MagicMock):
         with _rlock_for_rlocked_mocks:
             return MagicMock.__getattr__(self, name)
 
-    def __call__(*args, **kwargs):
+    def __call__(self, **kwargs):
         with _rlock_for_rlocked_mocks:
-            return MagicMock.__call__(*args, **kwargs)
+            return MagicMock.__call__(*self, **kwargs)
 
     def reset_mock(self):
         with _rlock_for_rlocked_mocks:
@@ -291,9 +291,7 @@ def _patching_method(method_name, patcher_maker, target_autocompletion=True):
         # we complete the value automatically by adding the prefix
         # defined as the `default_patch_prefix` attribute (if not None)
         prefix = getattr(self, 'default_patch_prefix', None)
-        if prefix is None:
-            return target
-        return '{}.{}'.format(prefix.rstrip('.'), target)
+        return target if prefix is None else '{}.{}'.format(prefix.rstrip('.'), target)
 
     # note: no named parameters are placed in the function signature
     # because we want to avoid argument name clashes (e.g., 'self' may
@@ -422,9 +420,7 @@ class _ExpectedObjectPlaceholder(object):
         arg_reprs.extend(
             '{}={!r}'.format(k, v)
             for k, v in sorted(self._constructor_kwargs.iteritems()))
-        return '{}({})'.format(
-            self.__class__.__name__,
-            ', '.join(arg_reprs))
+        return f"{self.__class__.__name__}({', '.join(arg_reprs)})"
 
     # Overridable methods:
 
@@ -571,8 +567,7 @@ class AnyInstanceOf(_ExpectedObjectPlaceholder):
     def __iter_flattened_classes(self, classes):
         for cls in classes:
             if isinstance(cls, tuple):
-                for c in self.__iter_flattened_classes(cls):
-                    yield c
+                yield from self.__iter_flattened_classes(cls)
             else:
                 yield cls
 
@@ -1211,8 +1206,7 @@ class RequestHelperMixin(object):
         concrete_view_class_kwargs = cls.get_concrete_view_class_kwargs(view_class, request)
         concrete_view_class = view_class.concrete_view_class(**concrete_view_class_kwargs)
         view_context = cls.get_view_context(concrete_view_class, request)
-        view_instance = concrete_view_class(view_context, request)
-        return view_instance
+        return concrete_view_class(view_context, request)
 
     @classmethod
     def get_concrete_view_class_kwargs(cls, view_class, request):

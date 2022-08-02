@@ -20,7 +20,7 @@ with open(osp.join(setup_dir, '.n6sdk-version')) as f:
 
 def setup_data_line_generator(filename_base):
     path_base = osp.join(setup_dir, filename_base)
-    path_glob = path_base + '*'
+    path_glob = f'{path_base}*'
     for path in glob.glob(path_glob):
         with open(path) as f:
             for raw_line in f:
@@ -29,7 +29,7 @@ def setup_data_line_generator(filename_base):
 
 pip_install = False
 setup_install = False
-requirements = ['n6sdk==' + n6sdk_version]
+requirements = [f'n6sdk=={n6sdk_version}']
 requirements_pip = []
 dep_links = []
 for line in setup_data_line_generator('requirements'):
@@ -87,8 +87,8 @@ setup(
 
 for pkgname in requirements_pip:
     if venv_dir:
-        command = '{}/bin/pip install {}'.format(venv_dir, pkgname)
+        command = f'{venv_dir}/bin/pip install {pkgname}'
     else:
-        command = '/usr/bin/pip install {}'.format(pkgname)
+        command = f'/usr/bin/pip install {pkgname}'
     if os.system(command):
-        sys.exit('exiting after error when executing {}'.format(command))
+        sys.exit(f'exiting after error when executing {command}')

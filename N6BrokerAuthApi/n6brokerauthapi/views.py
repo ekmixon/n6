@@ -94,7 +94,7 @@ class _N6BrokerAuthViewBase(SingleParamValuesViewMixin, AbstractViewBase):
         return self.plain_text_response('deny')
 
     def safe_name(self, name):
-        return "'{}'".format(ascii_str(name))
+        return f"'{ascii_str(name)}'"
 
     #
     # Private stuff
@@ -115,18 +115,19 @@ class _N6BrokerAuthViewBase(SingleParamValuesViewMixin, AbstractViewBase):
 
     def _warn_if_unknown_params(self):
         known_param_names = set(self.param_name_to_required_flag)
-        unknown_param_names = set(self.params) - known_param_names
-        if unknown_param_names:
-            self._log(logging.WARNING, 'Ignoring unknown request params: {}.'.format(
-                self._format_safe_names(unknown_param_names)))
+        if unknown_param_names := set(self.params) - known_param_names:
+            self._log(
+                logging.WARNING,
+                f'Ignoring unknown request params: {self._format_safe_names(unknown_param_names)}.',
+            )
 
     def _deny_if_missing_params(self):
-        missing_param_names = self.get_required_param_names() - set(self.params)
-        if missing_param_names:
+        if missing_param_names := self.get_required_param_names() - set(
+            self.params
+        ):
             raise _DenyAccess(
-                'Must sent "deny" response because of missing '
-                'request params: {}.'.format(
-                    self._format_safe_names(missing_param_names)))
+                f'Must sent "deny" response because of missing request params: {self._format_safe_names(missing_param_names)}.'
+            )
 
     def _format_safe_names(self, names):
         return ', '.join(sorted(map(self.safe_name, names)))
@@ -152,9 +153,9 @@ class _N6BrokerAuthResourceViewBase(_N6BrokerAuthViewBase):
         resource = self.params['resource']
         permission = self.params['permission']
         if resource not in self.valid_resources:
-            raise _DenyAccess('Invalid resource type: {}.'.format(self.safe_name(resource)))
+            raise _DenyAccess(f'Invalid resource type: {self.safe_name(resource)}.')
         if permission not in self.valid_permissions:
-            raise _DenyAccess('Invalid permission level: {}.'.format(self.safe_name(permission)))
+            raise _DenyAccess(f'Invalid permission level: {self.safe_name(permission)}.')
 
 
 # the *user_path* view (in rabbitmq-auth-backend-http's parlance)

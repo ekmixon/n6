@@ -249,10 +249,7 @@ class AbuseChSSLBlacklistDyreCollector(CollectorWithStateMixin, BaseRSSCollector
             # pages.
             downloaded_links = set(new_data.iterkeys())
             old_links = set(old_data.iterkeys())
-            common_links = old_links & downloaded_links
-            # If there are any URLs common to new and previous RSS,
-            # there is a risk of duplication of data.
-            if common_links:
+            if common_links := old_links & downloaded_links:
                 self._deduplicate_data(old_data, new_data, common_links)
         if not new_data:
             raise NoNewDataException
@@ -269,11 +266,7 @@ class AbuseChSSLBlacklistDyreCollector(CollectorWithStateMixin, BaseRSSCollector
         Returns:
             URL to item's detail page.
         """
-        url = None
-        for i in item:
-            if i.tag == 'link':
-                url = i.text
-                break
+        url = next((i.text for i in item if i.tag == 'link'), None)
         if url is None:
             LOGGER.warning("RSS item without a link to its detail page occurred.")
         return url
@@ -304,8 +297,7 @@ class AbuseChSSLBlacklistDyreCollector(CollectorWithStateMixin, BaseRSSCollector
                 LOGGER.warning("Could not parse event's details page with URL: %s", url)
                 continue
             items[url] = self._get_main_details(parsed_page)
-            binaries_table_body = parsed_page.xpath(self.binaries_xpath)
-            if binaries_table_body:
+            if binaries_table_body := parsed_page.xpath(self.binaries_xpath):
                 items[url]['binaries'] = [tuple(x) for x in
                                           self._get_binaries_details(binaries_table_body)]
         return items
@@ -377,8 +369,7 @@ class AbuseChSSLBlacklistDyreCollector(CollectorWithStateMixin, BaseRSSCollector
             elif 'binaries' in old_data_body[url]:
                 new_binaries = set(new_data_body[url]['binaries'])
                 old_binaries = set(old_data_body[url]['binaries'])
-                diff = new_binaries - old_binaries
-                if diff:
+                if diff := new_binaries - old_binaries:
                     new_data_body[url]['binaries'] = list(diff)
                 else:
                     new_data_body.pop(url)
@@ -392,7 +383,7 @@ class _BaseAbuseChDownloadingTimeOrderedRowsCollector(BaseDownloadingTimeOrdered
 
     @property
     def source_config_section(self):
-        return 'abusech_{}'.format(self.get_source_channel().replace('-', '_'))
+        return f"abusech_{self.get_source_channel().replace('-', '_')}"
 
     def load_state(self):
         state = super(_BaseAbuseChDownloadingTimeOrderedRowsCollector, self).load_state()
@@ -706,15 +697,14 @@ class AbuseChUrlhausPayloadsCollector(CollectorWithStateMixin,
         LOGGER.info('["%s"] Obtaining and preparing data finished', self._zip_filename)
 
     def _get_zip_url(self):
-        return '{}{}'.format(self.config['zip_files_url'], self._zip_filename)
+        return f"{self.config['zip_files_url']}{self._zip_filename}"
 
     def _get_zip_filepath(self):
-        return '{}/{}'.format(self._temp_dir, self._zip_filename)
+        return f'{self._temp_dir}/{self._zip_filename}'
 
     def _get_unpacked_dir(self):
         zip_filepath = self._get_zip_filepath()
-        unpacked_dir = '{}/'.format(zip_filepath[:-len(self.ARCHIVE_FILE_EXTENSION)])
-        return unpacked_dir
+        return f'{zip_filepath[:-len(self.ARCHIVE_FILE_EXTENSION)]}/'
 
     def _download_and_store_zip_file(self, zip_url, zip_filepath):
         with RequestPerformer(method='GET', url=zip_url, retries=self.HTTP_RETRIES) as perf:
@@ -758,10 +748,10 @@ class AbuseChUrlhausPayloadsCollector(CollectorWithStateMixin,
 
     def _get_payload_filename_and_info_pairs(self, unpacked_dir):
         filenames = os.listdir(unpacked_dir)
-        payload_filename_and_info_pairs = [(payload_filename,
-                                            self._get_payload_info(payload_filename))
-                                           for payload_filename in filenames]
-        return payload_filename_and_info_pairs
+        return [
+            (payload_filename, self._get_payload_info(payload_filename))
+            for payload_filename in filenames
+        ]
 
     def _get_payload_info(self, payload_filename):
         # Note: invalid MD5 hash or missing file for a given hash does
@@ -812,11 +802,9 @@ class AbuseChUrlhausPayloadsCollector(CollectorWithStateMixin,
         try:
             for payload_filename, payload_info in self._payload_filename_and_info_pairs:
                 payload_filepath = self._get_payload_filepath(payload_filename)
-                payload_info_dict = self._get_unhandled_payload_info_dict(
-                      payload_filename,
-                      payload_info,
-                      handled_payload_filenames)
-                if payload_info_dict:
+                if payload_info_dict := self._get_unhandled_payload_info_dict(
+                    payload_filename, payload_info, handled_payload_filenames
+                ):
                     self._publish(payload_filepath, payload_info_dict)
                     yield self.FLUSH_OUT
                     handled_payload_filenames.add(payload_filename)
@@ -832,7 +820,7 @@ class AbuseChUrlhausPayloadsCollector(CollectorWithStateMixin,
 
 
     def _get_payload_filepath(self, payload_filename):
-        return '{}/{}'.format(self._get_unpacked_dir(), payload_filename)
+        return f'{self._get_unpacked_dir()}/{payload_filename}'
 
     def _get_unhandled_payload_info_dict(self,
                                          payload_filename,
@@ -923,10 +911,8 @@ class AbuseChUrlhausPayloadsCollector(CollectorWithStateMixin,
 
     def _get_meta_headers(self, payload_info_dict):
         meta_headers = {'tlp': 'white'}
-        meta_headers.update(
-            self._iter_meta_headers_from_toplevel_items(payload_info_dict))
-        firstseen_url = self._get_firstseen_url(payload_info_dict)
-        if firstseen_url:
+        meta_headers |= self._iter_meta_headers_from_toplevel_items(payload_info_dict)
+        if firstseen_url := self._get_firstseen_url(payload_info_dict):
             meta_headers['url'] = firstseen_url
         meta_headers['archive_filename'] = self._zip_filename
         if self._archive_http_last_modified:
@@ -954,8 +940,7 @@ class AbuseChUrlhausPayloadsCollector(CollectorWithStateMixin,
                     self._zip_filename)
 
     def _get_firstseen_url(self, payload_info_dict):
-        events = payload_info_dict.get('urls')
-        if events:
+        if events := payload_info_dict.get('urls'):
             events_sorted_by_firstseen_and_id = sorted(events,
                                                        key=operator.itemgetter('firstseen',
                                                                                'url_id'))
@@ -972,7 +957,7 @@ class AbuseChUrlhausPayloadsCollector(CollectorWithStateMixin,
     def get_output_prop_kwargs(self, meta_headers, **processed_data):
         prop_kwargs = super(AbuseChUrlhausPayloadsCollector,
                             self).get_output_prop_kwargs(**processed_data)
-        prop_kwargs['headers'].setdefault('meta', dict())
+        prop_kwargs['headers'].setdefault('meta', {})
         prop_kwargs['headers']['meta'].update(meta_headers)
         return prop_kwargs
 
@@ -990,8 +975,7 @@ class AbuseChUrlhausPayloadsCollector(CollectorWithStateMixin,
     def _get_unhandled_count(self, handled_payload_filenames):
         payload_filenames = {payload_filename
                              for payload_filename, _ in self._payload_filename_and_info_pairs}
-        unhandled_count = len(payload_filenames - handled_payload_filenames)
-        return unhandled_count
+        return len(payload_filenames - handled_payload_filenames)
 
     def _update_state(self, handled_payload_filenames, unhandled_count):
         if unhandled_count == 0:

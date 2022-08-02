@@ -103,8 +103,8 @@ class ParserTestMixIn(TestCaseMixin):
             event_type = 'event'
         input_rk = self.PARSER_SOURCE
         if self.PARSER_RAW_FORMAT_VERSION_TAG is not sentinel.not_set:
-            input_rk = input_rk + '.' + self.PARSER_RAW_FORMAT_VERSION_TAG
-        expected_output_rk = (event_type + '.parsed.' + self.PARSER_SOURCE)
+            input_rk = f'{input_rk}.{self.PARSER_RAW_FORMAT_VERSION_TAG}'
+        expected_output_rk = f'{event_type}.parsed.{self.PARSER_SOURCE}'
         return input_properties, input_rk, expected_output_rk
 
     def _iter_expected_results(self, variable_results):
@@ -117,9 +117,9 @@ class ParserTestMixIn(TestCaseMixin):
             # (not using RecordDict's methods):
             record_dict._dict.update(record)
             record_dict._dict.setdefault('id', self._compute_id(record_dict))
-            ### ADDING LEGACY ITEM
-            used_custom_keys = record_dict.data_spec.custom_field_keys.intersection(record_dict._dict)
-            if used_custom_keys:
+            if used_custom_keys := record_dict.data_spec.custom_field_keys.intersection(
+                record_dict._dict
+            ):
                 record_dict._dict['__preserved_custom_keys__'] = sorted(used_custom_keys)
             ### ^^^ (to be removed later)
             yield record_dict._dict
@@ -130,8 +130,7 @@ class ParserTestMixIn(TestCaseMixin):
             self.assertEqual(args, ())
             self.assertEqual(set(kwargs), {'routing_key', 'body'})
             self.assertEqual(kwargs['routing_key'], expected_output_rk)
-            actual_output_data = json.loads(kwargs['body'])
-            yield actual_output_data
+            yield json.loads(kwargs['body'])
 
     def _compute_id(self, record_dict):
         # NOTE: concerning the expected value of the `id` event attribute --

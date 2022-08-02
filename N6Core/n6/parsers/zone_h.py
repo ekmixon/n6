@@ -80,10 +80,7 @@ class ZoneHRSSParser(BaseParser):
             Fully Qualified Domain Name extracted from the URL, as
             a string
         """
-        match = cls.fqdn_regex.search(url)
-        if match:
-            return match.group('fqdn')
-        return None
+        return match.group('fqdn') if (match := cls.fqdn_regex.search(url)) else None
 
     @classmethod
     def _normalize_datetime(cls, source_datetime):

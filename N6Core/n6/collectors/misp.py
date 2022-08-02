@@ -101,10 +101,11 @@ class MispCollector(CollectorWithStateMixin, BaseCollector):
         self._state = self._load_state_or_get_default()
         self._last_events_publishing_datetime = self._state['events_publishing_datetime']
         self._last_samples_publishing_datetime = self._state['samples_publishing_datetime']
-        if self._last_samples_publishing_datetime < self._last_events_publishing_datetime:
-            self._overdue_samples_to_publish = True
-        else:
-            self._overdue_samples_to_publish = False
+        self._overdue_samples_to_publish = (
+            self._last_samples_publishing_datetime
+            < self._last_events_publishing_datetime
+        )
+
         self._establish_connection()
         self._publishing_samples = False
         self._callback_timeout = int(self.config.get('callback_timeout', 1))
@@ -305,12 +306,13 @@ class MispCollector(CollectorWithStateMixin, BaseCollector):
             TLP value or malware sample's additional details.
         """
         properties = super(MispCollector, self).get_output_prop_kwargs(*args, **kwargs)
-        min_tlp = self._get_min_tlp()
-        if min_tlp:
-            properties['headers'].setdefault('meta', dict())[self.min_tlp_key_name] = min_tlp
+        if min_tlp := self._get_min_tlp():
+            properties['headers'].setdefault('meta', {})[self.min_tlp_key_name] = min_tlp
         if self._publishing_samples:
-            properties['headers'].setdefault('meta', dict()).setdefault('misp', dict()).update(
-                self._get_sample_headers())
+            properties['headers'].setdefault('meta', {}).setdefault(
+                'misp', {}
+            ).update(self._get_sample_headers())
+
         return properties
 
     def _get_sample_headers(self):
@@ -392,8 +394,7 @@ class MispCollector(CollectorWithStateMixin, BaseCollector):
             new events.
         """
         initial_timestamp = self._convert_datetime_to_timestamp(initial_datetime)
-        data = self.misp.download_last(initial_timestamp).get('response')
-        if data:
+        if data := self.misp.download_last(initial_timestamp).get('response'):
             self._misp_raw_events = data
             return json.dumps(data)
         raise NoNewEventsException
@@ -423,19 +424,27 @@ class MispCollector(CollectorWithStateMixin, BaseCollector):
         attribute_lists = (x['Event']['Attribute'] for x in raw_events)
         for attr_list in attribute_lists:
             for attr in attr_list:
-                if attr['type'] in self._possible_attribute_types and 'id' in attr:
-                    if (not self._state['last_published_samples'] or
-                            (self._state['last_published_samples'] and
-                                int(attr['id']) not in self._state['last_published_samples'])):
-                        yield attr
+                if (
+                    attr['type'] in self._possible_attribute_types
+                    and 'id' in attr
+                    and (
+                        not self._state['last_published_samples']
+                        or int(attr['id'])
+                        not in self._state['last_published_samples']
+                    )
+                ):
+                    yield attr
 
     def get_misp_verifycert(self):
         misp_verifycert = self.config.get('misp_verifycert')
-        if not misp_verifycert or misp_verifycert.lower() not in ('false', 'f', 'no', 'n', 'off',
-                                                                  '0'):
-            return True
-        else:
-            return False
+        return not misp_verifycert or misp_verifycert.lower() not in (
+            'false',
+            'f',
+            'no',
+            'n',
+            'off',
+            '0',
+        )
 
     def _get_min_tlp(self):
         """
@@ -445,8 +454,7 @@ class MispCollector(CollectorWithStateMixin, BaseCollector):
         Returns:
             A verified and normalized TLP value.
         """
-        min_tlp = self.config.get(self.min_tlp_key_name)
-        if min_tlp:
+        if min_tlp := self.config.get(self.min_tlp_key_name):
             min_tlp_normalized = min_tlp.lower()
             if min_tlp_normalized in self.allowed_tlp_vals:
                 return min_tlp_normalized

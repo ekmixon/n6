@@ -90,9 +90,7 @@ class _HashTypeMixIn(object):
             raise ValueError
 
     def process_result_value(self, value, dialect):
-        if value is None:
-            return None
-        return value.encode('hex')
+        return None if value is None else value.encode('hex')
 
 
 class MD5(_HashTypeMixIn, sqlalchemy.types.TypeDecorator):
@@ -195,8 +193,7 @@ class n6NormalizedData(Base):
     @classmethod
     def like_query(cls, key, value):
         mapping = {"url.sub": "url", "fqdn.sub": "fqdn"}
-        return or_(*[getattr(cls, mapping[key]).like("%{}%".format(val))
-                     for val in value])
+        return or_(*[getattr(cls, mapping[key]).like(f"%{val}%") for val in value])
 
     @classmethod
     def url_b64_experimental_query(cls, key, value):
@@ -287,9 +284,7 @@ class n6NormalizedData(Base):
             if value in _no_ip_placeholders:
                 del result_dict[ip_col_name]
 
-        # set the 'client' item
-        client = [c.client for c in self.clients]
-        if client:
+        if client := [c.client for c in self.clients]:
             result_dict['client'] = client
 
         return result_dict

@@ -83,7 +83,7 @@ class _AuthDatabaseAPI(object):
             return exc.public_message
         elif getattr(exc, '_is_n6_auth_db_validation_error_', False):
             assert hasattr(exc, 'invalid_field')
-            return 'The value of the "{}" field is not valid.'.format(exc.invalid_field)
+            return f'The value of the "{exc.invalid_field}" field is not valid.'
         elif isinstance(exc, DataError):
             return 'The submitted data are not valid.'
         elif isinstance(exc, (IntegrityError, OperationalError)):

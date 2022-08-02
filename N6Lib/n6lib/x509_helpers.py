@@ -343,8 +343,7 @@ def get_single_x509_rdn_value(x509_name, nid):
       ...
     UnexpectedCertificateDataError: no value
     """
-    entries = x509_name.get_entries_by_nid(nid)
-    if entries:
+    if entries := x509_name.get_entries_by_nid(nid):
         try:
             [entry] = entries
         except ValueError:

@@ -410,9 +410,10 @@ class _QueryProcessor(object):
         assert (data_spec.sql_relationship_field_keys  # {'client'}
                 ).issubset(cls.param_keys_without_query_func)
         for key, field in data_spec.param_field_specs().iteritems():
-            if not any(
-                    k in cls.param_keys_without_query_func
-                    for k in cls._generate_key_wildcards(key)):
+            if all(
+                k not in cls.param_keys_without_query_func
+                for k in cls._generate_key_wildcards(key)
+            ):
                 query_func_name = field.custom_info.get('func', 'key_query')
                 query_func = getattr(model_class, query_func_name)
                 key_to_query_func[key] = query_func
@@ -626,9 +627,8 @@ class _QueryProcessor(object):
         if client_ids is None:
             return (None if self.the_client_id is None
                     else [self.the_client_id])
-        else:
-            assert self.the_client_id is None
-            return client_ids
+        assert self.the_client_id is None
+        return client_ids
 
     def pop_limit(self, params):
         [opt_limit] = params.pop('opt.limit', [None])
@@ -785,11 +785,8 @@ class _QueryProcessor(object):
     @staticmethod
     def _get_event_tag_for_logging(result):
         try:
-            return (
-                '(@event whose id is {}, time is {}, modified is {})'.format(
-                    result.get('id', 'not set'),
-                    result.get('time', 'not set'),
-                    result.get('modified', 'not set')))
+            return f"(@event whose id is {result.get('id', 'not set')}, time is {result.get('time', 'not set')}, modified is {result.get('modified', 'not set')})"
+
         except (AttributeError, ValueError, TypeError):  # a bit of paranoia :)
             return '(@unknown event)'
 
@@ -804,8 +801,7 @@ class N6TestDataBackendAPI(N6DataBackendAPI):
                                res_limits, item_number_limit, access_zone,
                                client_id=None):
         opt_limit = 0
-        opt_limit_vals = params.get('opt.limit')
-        if opt_limit_vals:
+        if opt_limit_vals := params.get('opt.limit'):
             opt_limit = opt_limit_vals[0]
         if 0 < opt_limit < self.max_num_of_events:
             num_of_events = opt_limit

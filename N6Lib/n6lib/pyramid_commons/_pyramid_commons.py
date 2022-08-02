@@ -252,10 +252,12 @@ class _AbstractInfoView(_N6ViewMixin, CommaSeparatedParamValuesViewMixin, Abstra
 
     @staticmethod
     def _check_for_certificate(request):
-        if (request.environ.get(WSGI_SSL_ORG_ID_FIELD)
-                and request.environ.get(WSGI_SSL_USER_ID_FIELD)):
-            return True
-        return False
+        return bool(
+            (
+                request.environ.get(WSGI_SSL_ORG_ID_FIELD)
+                and request.environ.get(WSGI_SSL_USER_ID_FIELD)
+            )
+        )
 
 
 class N6InfoView(_AbstractInfoView):
@@ -481,7 +483,7 @@ class BaseUserAuthenticationPolicy(BaseAuthenticationPolicy):
 
     @staticmethod
     def merge_orgid_userid(org_id, user_id):
-        return '{},{}'.format(org_id, user_id)
+        return f'{org_id},{user_id}'
 
     @staticmethod
     def get_auth_data(request):

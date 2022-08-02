@@ -76,9 +76,7 @@ class _BaseCollectorTestCase(TestCaseMixin, unittest.TestCase):
         self.do_patching(config_content, cmdline_args, initial_state)
 
         init_kwargs = collector_class.get_script_init_kwargs()
-        collector = collector_class(**init_kwargs)
-
-        return collector
+        return collector_class(**init_kwargs)
 
 
     def do_patching(self,
@@ -435,7 +433,7 @@ class _TestMailCollectorsBaseClass(TestCaseMixin, unittest.TestCase):
             assert self.email_subject is None, (
                 '[Variant I] `raw_email` is provided '
                 'so `email_subject` should *not* be provided')
-            sample_email = self.raw_email
+            return self.raw_email
         else:
             # Variant II
             assert self.raw_email is None
@@ -445,22 +443,22 @@ class _TestMailCollectorsBaseClass(TestCaseMixin, unittest.TestCase):
             assert self.email_subject is not None, (
                 '[Variant II] `raw_email` is not provided '
                 'so `email_subject` *should* be provided')
-            sample_email = self._get_sample_email_for_variant_2()
-        return sample_email
+            return self._get_sample_email_for_variant_2()
 
     def _get_sample_email_for_variant_2(self):
         formatted_headers = self._format_headers_for_variant_2()
         message_content = self._prepare_message_content_for_variant_2()
-        if self.additional_headers:
-            sample_email = '{headers}\n{additional}\n{content}'.format(
+        return (
+            '{headers}\n{additional}\n{content}'.format(
                 headers=formatted_headers,
                 additional=self.additional_headers,
-                content=message_content)
-        else:
-            sample_email = '{headers}\n{content}'.format(
-                headers=formatted_headers,
-                content=message_content)
-        return sample_email
+                content=message_content,
+            )
+            if self.additional_headers
+            else '{headers}\n{content}'.format(
+                headers=formatted_headers, content=message_content
+            )
+        )
 
     def _format_headers_for_variant_2(self):
         return self._headers_pattern.strip().format(subject=self.email_subject, **self.email_items)
@@ -489,10 +487,10 @@ class _TestMailCollectorsBaseClass(TestCaseMixin, unittest.TestCase):
 
 
     def test_output_rk(self):
-        expected = '{}.{}'.format(self._COLLECTOR_SOURCE, self.expected_source_channel)
+        expected = f'{self._COLLECTOR_SOURCE}.{self.expected_source_channel}'
         version_tag = self.collector_instance.raw_format_version_tag
         if version_tag is not None:
-            expected = '{}.{}'.format(expected, version_tag)
+            expected = f'{expected}.{version_tag}'
         self.assertEqual(self.output_rk, expected)
 
 
@@ -539,7 +537,7 @@ class _TestMailCollectorsBaseClass(TestCaseMixin, unittest.TestCase):
                 r'^Subject:\s*(.*?)\s*$',
                 self.raw_email,
                 re.IGNORECASE | re.MULTILINE)
-            expected_mail_subject = expected_email_subject_match.group(1)
+            expected_mail_subject = expected_email_subject_match[1]
         else:
             # Variant II
             expected_mail_subject = self.email_subject

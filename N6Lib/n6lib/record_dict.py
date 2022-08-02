@@ -75,15 +75,15 @@ def chained(*adjusters):
     """
     if len(adjusters) == 1:
         return adjusters[0]
-    else:
-        def _compound_adjuster(self, value):
-            for adj in adjusters:
-                value = adj(self, value)
-            return value
-        _compound_adjuster._factory_names = frozenset().union(
-            *(getattr(adj, '_factory_names', frozenset())
-              for adj in adjusters))
-        return _compound_adjuster
+    def _compound_adjuster(self, value):
+        for adj in adjusters:
+            value = adj(self, value)
+        return value
+
+    _compound_adjuster._factory_names = frozenset().union(
+        *(getattr(adj, '_factory_names', frozenset())
+          for adj in adjusters))
+    return _compound_adjuster
 
 
 def applied_for_nonfalse(adjuster):
@@ -124,10 +124,12 @@ def adjuster_factory(adjuster_template_func):
     def actual_factory(*args, **kwargs):
         def adjuster(self, value):
             return adjuster_template_func(self, value, *args, **kwargs)
-        adjuster.__name__ = name + '__adjuster'
+
+        adjuster.__name__ = f'{name}__adjuster'
         # additional attrs for introspection:
         adjuster._factory_names = frozenset({name})
         return adjuster
+
     actual_factory.__name__ = name
     return actual_factory
 
@@ -182,8 +184,10 @@ def ensure_not_longer_than(self, value, max_length):
         raise TypeError('{!r} (type: {!r}) does not support `len()`'
                         .format(value, type(value)))
     if length > max_length:
-        raise ValueError('value length ({}) is greater than the maximum ({})'
-                         .format(length, max_length))
+        raise ValueError(
+            f'value length ({length}) is greater than the maximum ({max_length})'
+        )
+
     return value
 
 
@@ -343,9 +347,7 @@ def trim_domain(value, max_length):
     'ef.ghi'
     """
     value = value[-max_length:]
-    if value.startswith('.'):
-        return value[1:]
-    return value
+    return value[1:] if value.startswith('.') else value
 
 def trim_seq(value, max_length):
     return [trim(v, max_length) for v in value]
@@ -436,17 +438,17 @@ class RecordDict(collections.MutableMapping):
         self._settable_keys = (self.required_keys |
                                self.optional_keys)
 
-        # to catch some kinds of bugs early...
-        duplicated = self.required_keys & self.optional_keys
-        if duplicated:
-            raise ValueError('{} has keys declared both '
-                             'as required and optional: {}'
-                             .format(self.__class__.__name__,
-                                     ', '.join(sorted(duplicated))))
+        if duplicated := self.required_keys & self.optional_keys:
+            raise ValueError(
+                f"{self.__class__.__name__} has keys declared both as required and optional: {', '.join(sorted(duplicated))}"
+            )
 
-        missing_adjusters = [key for key in self._settable_keys
-                             if not hasattr(self, self._adjuster_name(key))]
-        if missing_adjusters:
+
+        if missing_adjusters := [
+            key
+            for key in self._settable_keys
+            if not hasattr(self, self._adjuster_name(key))
+        ]:
             raise TypeError('{!r} has no adjusters for keys: {}'
                              .format(self,
                                      ', '.join(sorted(missing_adjusters))))
@@ -469,15 +471,13 @@ class RecordDict(collections.MutableMapping):
     def get_ready_dict(self):
         current_keys = set(self._dict)
         assert self._settable_keys >= current_keys
-        missing_keys = self.required_keys - current_keys
-        if missing_keys:
+        if missing_keys := self.required_keys - current_keys:
             raise ValueError('missing keys: ' +
                              ', '.join(sorted(missing_keys)))
         ready_dict = copy.deepcopy(self._dict)
-        ######## provide the legacy item
-        ######## (needed by old version of RecordDict, in not-yet-updated components)
-        used_custom_keys = self.data_spec.custom_field_keys.intersection(ready_dict)
-        if used_custom_keys:
+        if used_custom_keys := self.data_spec.custom_field_keys.intersection(
+            ready_dict
+        ):
             ready_dict['__preserved_custom_keys__'] = sorted(used_custom_keys)
         ######## ^^^ (to be removed later)
         return ready_dict
@@ -502,9 +502,7 @@ class RecordDict(collections.MutableMapping):
         if custom_items:
             item_prototype['custom'] = custom_items
 
-        # depending on "address" provide one or more database items (dicts)
-        address_list = item_prototype.pop('address', None)  # NOTE: deleting `address`
-        if address_list:
+        if address_list := item_prototype.pop('address', None):
             # the `address` list was present and not empty
             # -> db item for each list item (each db item containing
             # `ip`[/`cc`/`asn`] of the list item + the whole `address`)
@@ -515,7 +513,7 @@ class RecordDict(collections.MutableMapping):
                 # cloning the prototype dict...
                 db_item = item_prototype.copy()
                 # ...and updating the copy with particular address data
-                db_item.update(addr)
+                db_item |= addr
                 yield db_item
         else:
             # the `address` list was *empty* or *not* present

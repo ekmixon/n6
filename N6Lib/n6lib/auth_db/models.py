@@ -136,30 +136,37 @@ class _ExternalInterfaceMixin(object):
 
 class AuthDBCustomDeclarativeMeta(DeclarativeMeta):
 
-    def __init__(cls, *args, **kwargs):
-        cls.__provide_validators()
-        with_dunder_unicode_from_str(cls)
-        super(AuthDBCustomDeclarativeMeta, cls).__init__(*args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        self.__provide_validators()
+        with_dunder_unicode_from_str(self)
+        super(AuthDBCustomDeclarativeMeta, self).__init__(*args, **kwargs)
 
-    def __provide_validators(cls):
-        for column_name in getattr(cls, '_columns_to_validate', ()):
-            cls.__provide_validator_for_column(column_name)
+    def __provide_validators(self):
+        for column_name in getattr(self, '_columns_to_validate', ()):
+            self.__provide_validator_for_column(column_name)
 
-    def __provide_validator_for_column(cls, column_name):
-        validator_name, validator_method = cls.__get_validator_name_and_method(column_name)
-        validator_func = cls._make_validator_func(column_name, validator_name, validator_method)
-        cls.__setup_sqlalchemy_validator(column_name, validator_name, validator_func)
+    def __provide_validator_for_column(self, column_name):
+        validator_name, validator_method = self.__get_validator_name_and_method(
+            column_name
+        )
 
-    def __get_validator_name_and_method(cls, column_name):
-        for validator_name in cls.__iter_possible_validator_names(column_name):
+        validator_func = self._make_validator_func(
+            column_name, validator_name, validator_method
+        )
+
+        self.__setup_sqlalchemy_validator(column_name, validator_name, validator_func)
+
+    def __get_validator_name_and_method(self, column_name):
+        for validator_name in self.__iter_possible_validator_names(column_name):
             validator_method = getattr(auth_db_validators, validator_name, None)
             if validator_method is not None:
                 return validator_name, validator_method
         raise AssertionError('no validator found for column {!r}'.format(column_name))
 
-    def __iter_possible_validator_names(cls, column_name):
+    def __iter_possible_validator_names(self, column_name):
         # first, try with qualified name (including table name + column name)
-        yield auth_db_validators.VALIDATOR_METHOD_PREFIX + cls.__tablename__ + '__' + column_name
+        yield auth_db_validators.VALIDATOR_METHOD_PREFIX + self.__tablename__ + '__' + column_name
+
         # then, try with unqualified name (including just column name)
         yield auth_db_validators.VALIDATOR_METHOD_PREFIX + column_name
 
@@ -184,10 +191,10 @@ class AuthDBCustomDeclarativeMeta(DeclarativeMeta):
         validator_func.__name__ = validator_name
         return validator_func
 
-    def __setup_sqlalchemy_validator(cls, column_name, validator_name, validator_func):
+    def __setup_sqlalchemy_validator(self, column_name, validator_name, validator_func):
         sqlalchemy_validator_maker = validates(column_name)
         sqlalchemy_validator = sqlalchemy_validator_maker(validator_func)
-        setattr(cls, validator_name, sqlalchemy_validator)
+        setattr(self, validator_name, sqlalchemy_validator)
 
 
 Base = declarative_base(metaclass=AuthDBCustomDeclarativeMeta)
@@ -493,9 +500,7 @@ class _PassEncryptMixin(object):
 
     # noinspection PyUnresolvedReferences
     def verify_password(self, password):
-        if self.password:
-            return bcrypt.verify(password, self.password)
-        return None
+        return bcrypt.verify(password, self.password) if self.password else None
 
 
 class Org(_ExternalInterfaceMixin, Base):
@@ -635,7 +640,7 @@ class Org(_ExternalInterfaceMixin, Base):
         cascade='all, delete-orphan')
 
     def __str__(self):
-        return 'Org "{}"'.format(formattable_as_str(self.org_id))
+        return f'Org "{formattable_as_str(self.org_id)}"'
 
     __repr__ = attr_repr('org_id')
 
@@ -1226,7 +1231,7 @@ class OrgGroup(Base):
     orgs = rel('Org', secondary=org_org_group_link, back_populates='org_groups')
 
     def __str__(self):
-        return 'Org group "{}"'.format(formattable_as_str(self.org_group_id))
+        return f'Org group "{formattable_as_str(self.org_group_id)}"'
 
     __repr__ = attr_repr('org_group_id')
 
@@ -1275,7 +1280,7 @@ class User(_ExternalInterfaceMixin, _PassEncryptMixin, Base):
         foreign_keys='Cert.revoked_by_login')
 
     def __str__(self):
-        return 'User "{}"'.format(formattable_as_str(self.login))
+        return f'User "{formattable_as_str(self.login)}"'
 
     __repr__ = attr_repr('id', 'login', 'org_id')
 
@@ -1307,7 +1312,7 @@ class Component(_ExternalInterfaceMixin, _PassEncryptMixin, Base):
         foreign_keys='Cert.revoked_by_component_login')
 
     def __str__(self):
-        return 'Component "{}"'.format(formattable_as_str(self.login))
+        return f'Component "{formattable_as_str(self.login)}"'
 
     __repr__ = attr_repr('login')
 
@@ -1327,7 +1332,7 @@ class Source(Base):
     subsources = rel('Subsource', back_populates='source')
 
     def __str__(self):
-        return 'Source "{}"'.format(formattable_as_str(self.source_id))
+        return f'Source "{formattable_as_str(self.source_id)}"'
 
     __repr__ = attr_repr('source_id')
 
@@ -1373,7 +1378,7 @@ class Subsource(Base):
         back_populates='subsources')
 
     def __str__(self):
-        return 'Subsource "{}"'.format(formattable_as_str(self.label))
+        return f'Subsource "{formattable_as_str(self.label)}"'
 
     __repr__ = attr_repr('id', 'label', 'source_id')
 
@@ -1394,7 +1399,7 @@ class SubsourceGroup(Base):
         back_populates='subsource_groups')
 
     def __str__(self):
-        return 'Subsource group "{}"'.format(formattable_as_str(self.label))
+        return f'Subsource group "{formattable_as_str(self.label)}"'
 
     __repr__ = attr_repr('label')
 
@@ -1456,7 +1461,7 @@ class CriteriaContainer(Base):
         back_populates='exclusion_criteria')
 
     def __str__(self):
-        return 'Criteria container "{}"'.format(formattable_as_str(self.label))
+        return f'Criteria container "{formattable_as_str(self.label)}"'
 
     __repr__ = attr_repr('label')
 
@@ -1476,7 +1481,7 @@ class SystemGroup(_ExternalInterfaceMixin, Base):
         back_populates='system_groups')
 
     def __str__(self):
-        return 'System group "{}"'.format(formattable_as_str(self.name))
+        return f'System group "{formattable_as_str(self.name)}"'
 
     __repr__ = attr_repr('name')
 
@@ -1598,9 +1603,7 @@ class Cert(_ExternalInterfaceMixin, Base):
 
     def __str__(self):
         revocation_marker_prefix = ('[revoked] ' if self.is_revoked else '')
-        return '{}Cert #{} (@{})'.format(revocation_marker_prefix,
-                                         formattable_as_str(self.serial_hex),
-                                         formattable_as_str(self.ca_cert))
+        return f'{revocation_marker_prefix}Cert #{formattable_as_str(self.serial_hex)} (@{formattable_as_str(self.ca_cert)})'
 
     __repr__ = attr_repr('serial_hex', 'ca_cert_label', 'ca_profile', 'revoked_on')
 
@@ -1641,10 +1644,11 @@ class CACert(_ExternalInterfaceMixin, Base):
     certs = rel('Cert', back_populates='ca_cert')
 
     def __str__(self):
-        profile_marker_suffix = (' - {}'.format(formattable_as_str(self.profile)) if self.profile
-                                 else '')
-        return 'CACert "{}"{}'.format(formattable_as_str(self.ca_label),
-                                      profile_marker_suffix)
+        profile_marker_suffix = (
+            f' - {formattable_as_str(self.profile)}' if self.profile else ''
+        )
+
+        return f'CACert "{formattable_as_str(self.ca_label)}"{profile_marker_suffix}'
 
     __repr__ = attr_repr('ca_label', 'profile', 'parent_ca_label')
 

@@ -54,14 +54,10 @@ class _BaseSnortSuricataRenderer(BaseStreamRenderer):
         raise NotImplemented
 
     def filter_common(self, data, **kwargs):
-        if data.get('category') not in self.SURICATA_SNORT_CATEGORIES:
-            return True
-        return False
+        return data.get('category') not in self.SURICATA_SNORT_CATEGORIES
 
     def parse_data(self, data, **kwargs):
-        result = {}
-        result['id'] = data['id']
-        result['sid'] = self._id_to_sid(data['id'])
+        result = {'id': data['id'], 'sid': self._id_to_sid(data['id'])}
         result['classtype'] = self._category_to_classtype(data['category'])
         result['category'] = data['category']
         result['name'] = data['name'] if data.get('name') is not None else ""
@@ -88,9 +84,8 @@ class _BaseSnortSuricataRenderer(BaseStreamRenderer):
         fqdn_parts = fqdn.split('.')
         qname_parts = []
         for part in fqdn_parts:
-            qname_parts.append(str(len(part)).zfill(2))
-            qname_parts.append(part)
-        return "|%s|00|" % "|".join(qname_parts)
+            qname_parts.extend((str(len(part)).zfill(2), part))
+        return f'|{"|".join(qname_parts)}|00|'
 
     def _category_to_classtype(self, category):
         return self.SURICATA_SNORT_CATEGORIES[category]['classtype']
@@ -115,18 +110,15 @@ class _BaseSnortSuricataRenderer(BaseStreamRenderer):
         return "".join(output)
 
     def _address_to_ip(self, address):
-        ips = [a.get('ip').strip() for a in address if a.get('ip') is not None]
-        if not ips:
-            return ""
-        if len(ips) == 1:
-            return ips[0]
+        if ips := [
+            a.get('ip').strip() for a in address if a.get('ip') is not None
+        ]:
+            return ips[0] if len(ips) == 1 else '[' + ','.join(ips) + ']'
         else:
-            return '[' + ','.join(ips) + ']'
+            return ""
 
     def _proto_to_proto(self, proto):
-        if proto not in ('tcp', 'ip', 'udp'):
-            return 'ip'
-        return proto
+        return 'ip' if proto not in ('tcp', 'ip', 'udp') else proto
 
     def render_content(self, data, **kwargs):
         if self.RULE_TEMPLATE is None:
@@ -143,17 +135,13 @@ class _BaseSnortSuricataRenderer(BaseStreamRenderer):
 class _BaseDNSRuleRenderer(_BaseSnortSuricataRenderer):
 
     def filter_renderer_specific(self, data, **kwargs):
-        if not data.get('fqdn'):
-            return True
-        return False
+        return not data.get('fqdn')
 
 
 class _BaseHTTPRuleRenderer(_BaseSnortSuricataRenderer):
 
     def filter_renderer_specific(self, data, **kwargs):
-        if not data.get('url'):
-            return True
-        return False
+        return not data.get('url')
 
 
 class _BaseIPRuleRenderer(_BaseSnortSuricataRenderer):
@@ -164,9 +152,11 @@ class _BaseIPRuleRenderer(_BaseSnortSuricataRenderer):
         ### XXX: the line below is strange; probably, it could be replated with:
         ###      `if not any(a.get('ip') is not None for a in data['address']):`
         ### and maybe even that check would be redundant -- because 'ip' is obligatory in 'address'
-        if not [a.get('ip').strip() for a in data.get('address') if a.get('ip') is not None]:
-            return True
-        return False
+        return not [
+            a.get('ip').strip()
+            for a in data.get('address')
+            if a.get('ip') is not None
+        ]
 
 
 class _BaseIPBlacklistRuleRenderer(_BaseSnortSuricataRenderer):
@@ -183,9 +173,11 @@ class _BaseIPBlacklistRuleRenderer(_BaseSnortSuricataRenderer):
         ### XXX: the line below is strange; probably, it could be replated with:
         ###      `if not any(a.get('ip') is not None for a in data['address']):`
         ### and maybe even that check would be redundant -- because 'ip' is obligatory in 'address'
-        if not [a.get('ip').strip() for a in data.get('address') if a.get('ip') is not None]:
-            return True
-        return False
+        return not [
+            a.get('ip').strip()
+            for a in data.get('address')
+            if a.get('ip') is not None
+        ]
 
 
 @register_stream_renderer('snort-dns')
@@ -306,8 +298,7 @@ class StreamRenderer_csv(BaseStreamRenderer):
         serialized = {k: v for k, v in value.items()
                       if k not in ('ip', 'cc', 'asn', 'address', 'time')}
         serialized['time'] = value['time'].isoformat() + "Z"
-        name = serialized.get('name')
-        if name:
+        if name := serialized.get('name'):
             serialized['name'] = name.replace('\n', '\\n').replace('\r', '\\r')
         address = value.get('address')
         if address is not None:
@@ -326,21 +317,21 @@ class StreamRenderer_csv(BaseStreamRenderer):
         details = []
         dest_ip = serialized.get('dip', serialized.get('adip'))
         if value.get('proto') is not None:
-            details.append("{}".format(value.get('proto')))
+            details.append(f"{value.get('proto')}")
         if value.get('sport') is not None:
-            details.append("from port {}".format(value.get('sport')))
+            details.append(f"from port {value.get('sport')}")
         if dest_ip is not None:
             if value.get('dport') is not None:
-                details.append("to {}:{}".format(dest_ip, value.get('dport')))
+                details.append(f"to {dest_ip}:{value.get('dport')}")
             else:
-                details.append("to {}".format(dest_ip))
+                details.append(f"to {dest_ip}")
         elif value.get('dport') is not None:
-            details.append("to port {}".format(value.get('dport')))
+            details.append(f"to port {value.get('dport')}")
         target = value.get('target')
         if target is not None:
             if isinstance(target, unicode):
                 target = target.encode('utf-8')
-            details.append("target {}".format(target))
+            details.append(f"target {target}")
         serialized["details"] = " ".join(details)
         serialized = {
             k: (v.encode('utf-8') if isinstance(v, unicode)
@@ -372,28 +363,32 @@ else:
                 raise HTTPForbidden(exc.public_message)
 
         def _preprocess_query_string(self, request):
-            if request.query_string:
-                qs = request.query_string.split('&')
-            else:
-                qs = []
-            qs = [q for q in qs if not (q.startswith('source=') or q.startswith('category='))]
-            if qs:
+            qs = request.query_string.split('&') if request.query_string else []
+            if qs := [
+                q
+                for q in qs
+                if not (q.startswith('source=') or q.startswith('category='))
+            ]:
                 return "&".join(qs) + "&"
             else:
                 return ""
 
         def _calculate_confidence(self, values, source, category):
-            confidences = [self.conversion.get(c.confidence) for c in values
-                           if c.source == source and c.category == category]
-            if confidences:
+            if confidences := [
+                self.conversion.get(c.confidence)
+                for c in values
+                if c.source == source and c.category == category
+            ]:
                 return self.iv_conversion.get(min(confidences))
             else:
                 return None
 
         def _calculate_restriction(self, values, source, category):
-            restrictions = [self.restriction.get(getattr(c, 'restriction', None)) for c in values
-                            if c.source == source and c.category == category]
-            if restrictions:
+            if restrictions := [
+                self.restriction.get(getattr(c, 'restriction', None))
+                for c in values
+                if c.source == source and c.category == category
+            ]:
                 return self.iv_restriction.get(min(restrictions))
             else:
                 return None

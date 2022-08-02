@@ -63,15 +63,14 @@ class _TransactionContextManager(threading.local):
             active = self.active
             manager = zope_transaction.manager
             final = manager.get()
-            if active is final:
-                if exc_value is None:
-                    manager.commit()
-                else:
-                    manager.abort()
-            else:
+            if active is not final:
                 raise AssertionError('something wrong: the real final transaction {!r} '
                                      'is not the transaction {!r} that has been managed'
                                      .format(final, active))
+            if exc_value is None:
+                manager.commit()
+            else:
+                manager.abort()
         except:
             manager.abort()
             raise

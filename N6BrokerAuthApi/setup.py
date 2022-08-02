@@ -11,12 +11,7 @@ with open(osp.join(setup_dir, '.n6-version')) as f:
     n6_version = f.read().strip()
 
 
-requires = [
-    'n6lib==' + n6_version,
-    'pyramid',
-    'paste',
-    'typing',
-]
+requires = [f'n6lib=={n6_version}', 'pyramid', 'paste', 'typing']
 
 setup(
     name='n6brokerauthapi',

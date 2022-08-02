@@ -219,15 +219,13 @@ class AggregatorDataWrapper(object):
         """
 
         source_data = self.aggr_data.get_or_create_sourcedata(data, self.time_tolerance)
-        result = source_data.process_event(data)
-        return result
+        return source_data.process_event(data)
 
     def generate_suppresed_events_for_source(self, data):
         """Called after each event in a given source was processed. Yields suppressed events
         """
         source_data = self.aggr_data.get_or_create_sourcedata(data)
-        for event in source_data.generate_suppressed_events():
-            yield event
+        yield from source_data.generate_suppressed_events()
 
     def generate_suppresed_events_after_timeout(self):
         """Scans all stored sources and based on real time
@@ -300,8 +298,7 @@ class Aggregator(QueuedBase):
         """Processes the event aggregation.
         Each event also triggers additional suppressed events based on time of the given source.
         """
-        do_publish_new_message = self.db.process_new_message(data)
-        if do_publish_new_message:
+        if do_publish_new_message := self.db.process_new_message(data):
             self.publish_event(('event', data))
         for type_, event in self.db.generate_suppresed_events_for_source(data):
             if event is not None:
@@ -330,7 +327,7 @@ class Aggregator(QueuedBase):
             return
         cleaned_payload = self._get_cleaned_payload(type_, payload)
         source, channel = cleaned_payload['source'].split('.')
-        rk = "{}.{}.{}.{}".format(type_, "aggregated", source, channel)
+        rk = f"{type_}.aggregated.{source}.{channel}"
         body = json.dumps(cleaned_payload)
         self.publish_output(routing_key=rk, body=body)
 

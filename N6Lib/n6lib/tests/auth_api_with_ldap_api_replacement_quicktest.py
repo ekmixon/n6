@@ -173,8 +173,7 @@ def _patch_TestAuthAPI__get_org_ids_to_notification_configs():
 def run_tests():
     loader = unittest.defaultTestLoader
     suite = _make_test_suite(loader)
-    exit_code = _run_test_suite(suite)
-    return exit_code
+    return _run_test_suite(suite)
 
 def _make_test_suite(loader):
     suite = unittest.TestSuite()
@@ -187,8 +186,7 @@ def _make_test_suite(loader):
 def _run_test_suite(suite):
     # noinspection PyUnresolvedReferences
     result = unittest.TextTestRunner(verbosity=1).run(suite)
-    exit_code = int(not result.wasSuccessful())
-    return exit_code
+    return int(not result.wasSuccessful())
 
 
 #
@@ -205,10 +203,9 @@ def external_db_context():
         create_and_init_db(timeout=MARIADB_ACCESSIBILITY_TIMEOUT)
     except RuntimeError as exc:
         raise RuntimeError(
-            'MARIADB_ACCESSIBILITY_TIMEOUT={} passed and '
-            'still cannot connect to database! ({})'.format(
-                MARIADB_ACCESSIBILITY_TIMEOUT,
-                ascii_str(exc)))
+            f'MARIADB_ACCESSIBILITY_TIMEOUT={MARIADB_ACCESSIBILITY_TIMEOUT} passed and still cannot connect to database! ({ascii_str(exc)})'
+        )
+
     else:
         drop_db()
         yield
@@ -233,11 +230,14 @@ def own_db_context():
     MARIADB_RUN_COMMAND = [
         DOCKER_EXECUTABLE,
         'run',
-        '--name', MARIADB_DOCKER_NAME,
-        '-e', 'MYSQL_ROOT_PASSWORD=' + MARIADB_PASSWORD,
+        '--name',
+        MARIADB_DOCKER_NAME,
+        '-e',
+        f'MYSQL_ROOT_PASSWORD={MARIADB_PASSWORD}',
         '-d',
         'mariadb:10',
     ]
+
     MARIADB_GET_IP_COMMAND = [
         DOCKER_EXECUTABLE,
         'inspect',
@@ -308,7 +308,7 @@ def create_and_init_db(timeout):
         else:
             break
     else:
-        raise RuntimeError('Cannot connect to database... ({})'.format(error_msg))
+        raise RuntimeError(f'Cannot connect to database... ({error_msg})')
     sleep(1)
 
 def drop_db():
@@ -331,7 +331,7 @@ def populate_db_with_test_data(auth_api_test_class_name__or__data_maker):
 def _get_data_maker(auth_api_test_class_name__or__data_maker):
     if isinstance(auth_api_test_class_name__or__data_maker, basestring):
         auth_api_test_class_name = auth_api_test_class_name__or__data_maker
-        data_maker_name = 'data_maker_for____{}'.format(auth_api_test_class_name)
+        data_maker_name = f'data_maker_for____{auth_api_test_class_name}'
         data_maker = globals()[data_maker_name]
     else:
         data_maker = auth_api_test_class_name__or__data_maker

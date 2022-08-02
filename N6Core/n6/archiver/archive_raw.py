@@ -245,7 +245,7 @@ class DbManager(object):
     @currdb.setter
     def currdb(self, value):
         value_str = str(value)
-        if len(value_str) >= 64 or len(value_str) < 1:
+        if len(value_str) >= 64 or not value_str:
             LOGGER.error('to long db name in mongo, max 63 chars, min 1 char : %r', value_str)
             raise n6QueueProcessingException("to long db name in mongo, max 63 chars, min 1 char"
                                              ": {0}".format(value_str))
@@ -253,8 +253,10 @@ class DbManager(object):
             if forbidden_char in value_str:
                 LOGGER.error('name of db: %r, contains forbidden_char: %r', value_str,
                              forbidden_char)
-                raise n6QueueProcessingException("name of db: {}, "
-                                                 "contains forbidden_char: {}".format(value_str, forbidden_char))
+                raise n6QueueProcessingException(
+                    f"name of db: {value_str}, contains forbidden_char: {forbidden_char}"
+                )
+
         self._currdb = value
 
     @property
@@ -268,7 +270,7 @@ class DbManager(object):
             return
         value_str = str(value)
         m = re.match(first_letter_collection_name, value_str)
-        if not m or len(value_str) < 1:
+        if not m or not value_str:
             raise n6QueueProcessingException('Collection names should begin with an underscore '
                                              'or a letter character, and not be an empty string '
                                              '(e.g. ""), and not begin with the system. prefix. '
@@ -289,10 +291,10 @@ class DbManager(object):
     def collection_exists(self):
         """Check if the collection exists in the database.
         Not very good in terms of performance!."""
-        if self.currcoll not in self.get_conn_db().collection_names():
-            # only for manageApi
-            return self.currcoll + '.files' in self.get_conn_db().collection_names()
-        return self.currcoll in self.get_conn_db().collection_names()
+        return (
+            self.currcoll in self.get_conn_db().collection_names()
+            or f'{self.currcoll}.files' in self.get_conn_db().collection_names()
+        )
 
     def initialize_index_store(self):
         if self.connection:
@@ -321,36 +323,35 @@ class MongoConnection(object):
         self.raw = None
         self.content_type = None
         self.headers = {}
-        if properties:
-            if properties.headers:
-                self.headers = properties.headers.copy()
-                if "meta" in properties.headers:
-                    self.headers['meta'].update(properties.headers['meta'])
-                else:
-                    # empty meta, add key meta, adds key meta
-                    # another data  such. rid, received, contentType....
-                    self.headers["meta"] = {}
-                    LOGGER.debug('No "meta" in headers: %r', properties.headers)
-            else:
-                # empty headers, add key meta, adds key
-                # meta another data  such. rid, received, contentType....
-                self.headers["meta"] = {}
-                LOGGER.debug('Empty headers: %r', properties.headers)
-
-            if properties.type in ('file', 'blacklist'):
-                # content_type required fo type file and blacklist
-                try:
-                    self.headers['meta'].update({'contentType': properties.content_type})
-                except AttributeError as exc:
-                    LOGGER.error('No "content_type" in properties: %r', properties.headers)
-                    raise
-            # always add
-            self.headers['meta'].update({'rid': properties.message_id,
-                                         'received': self.get_time_created(properties.timestamp)})
-        else:
+        if not properties:
             # empty properties, it is very bad
             raise n6QueueProcessingException("empty properties, it is very bad"
                                              ": {0}".format(properties))
+        if properties.headers:
+            self.headers = properties.headers.copy()
+            if "meta" in properties.headers:
+                self.headers['meta'].update(properties.headers['meta'])
+            else:
+                # empty meta, add key meta, adds key meta
+                # another data  such. rid, received, contentType....
+                self.headers["meta"] = {}
+                LOGGER.debug('No "meta" in headers: %r', properties.headers)
+        else:
+            # empty headers, add key meta, adds key
+            # meta another data  such. rid, received, contentType....
+            self.headers["meta"] = {}
+            LOGGER.debug('Empty headers: %r', properties.headers)
+
+        if properties.type in ('file', 'blacklist'):
+            # content_type required fo type file and blacklist
+            try:
+                self.headers['meta'].update({'contentType': properties.content_type})
+            except AttributeError as exc:
+                LOGGER.error('No "content_type" in properties: %r', properties.headers)
+                raise
+        # always add
+        self.headers['meta'].update({'rid': properties.message_id,
+                                     'received': self.get_time_created(properties.timestamp)})
 
     def get_time_created(self, ts):
         try:
@@ -776,16 +777,26 @@ class BlackListCompacter(MongoConnection):
         f_sout = open(self.tempfile_patch_u, "w")
         if BlackListCompacter.init:
             BlackListCompacter.init = 0
-            subprocess.call("diff -u " + file1 + " " + file2,
-                            stdout=f_sout, stderr=subprocess.STDOUT, shell=True)
+            subprocess.call(
+                f"diff -u {file1} {file2}",
+                stdout=f_sout,
+                stderr=subprocess.STDOUT,
+                shell=True,
+            )
+
             f_sout.close()
 
             self.save_file_in_db(self.marker_db_init,
                                  open(self.tempfile_patch_u, 'r').read())
             LOGGER.debug(' marker init in db:%s ', self.marker_db_init)
         else:
-            subprocess.call("diff -u " + file1 + " " +
-                            file2, stdout=f_sout, stderr=subprocess.STDOUT, shell=True)
+            subprocess.call(
+                (f"diff -u {file1} " + file2),
+                stdout=f_sout,
+                stderr=subprocess.STDOUT,
+                shell=True,
+            )
+
             f_sout.close()
 
             self.save_file_in_db(self.marker_db_diff,

@@ -305,40 +305,30 @@ class TestSimpleNamespace(unittest.TestCase):
 @expand
 class Test__exiting_on_exception(unittest.TestCase):
 
-    @foreach(
-        param(
+    @foreach(param(
             decorator_kwargs=None,
             expected_exc_class=SystemExit,
             expected_regex_pattern_prefix=r'^FATAL ERROR!.*',
-        ),
-        param(
-            decorator_kwargs=dict(),
-            expected_exc_class=SystemExit,
-            expected_regex_pattern_prefix=r'^FATAL ERROR!.*',
-        ),
-        param(
+        ), param(decorator_kwargs={}, expected_exc_class=SystemExit, expected_regex_pattern_prefix=r'^FATAL ERROR!.*'), param(
             decorator_kwargs=dict(
                 exc_message_pattern='custom text, {traceback_msg}'
             ),
             expected_exc_class=SystemExit,
             expected_regex_pattern_prefix=r'^custom text.*',
-        ),
-        param(
+        ), param(
             decorator_kwargs=dict(
                 exc_factory=RuntimeError,
             ),
             expected_exc_class=RuntimeError,
             expected_regex_pattern_prefix=r'^FATAL ERROR!.*',
-        ),
-        param(
+        ), param(
             decorator_kwargs=dict(
                 exc_factory=RuntimeError,
                 exc_message_pattern='custom text, {traceback_msg}',
             ),
             expected_exc_class=RuntimeError,
             expected_regex_pattern_prefix=r'^custom text.*',
-        ),
-    )
+        ))
     @foreach(
         param(
             raised_exc=ValueError,
@@ -394,16 +384,10 @@ class Test__exiting_on_exception(unittest.TestCase):
                 'custom text' in str(cm.exception)), 'bug in the test'
 
 
-    @foreach(
-        param(decorator_kwargs=None),
-        param(decorator_kwargs=dict()),
-        param(decorator_kwargs=dict(exc_message_pattern='custom text, {traceback_msg}')),
-        param(decorator_kwargs=dict(exc_factory=RuntimeError)),
-        param(decorator_kwargs=dict(
+    @foreach(param(decorator_kwargs=None), param(decorator_kwargs={}), param(decorator_kwargs=dict(exc_message_pattern='custom text, {traceback_msg}')), param(decorator_kwargs=dict(exc_factory=RuntimeError)), param(decorator_kwargs=dict(
             exc_factory=RuntimeError,
             exc_message_pattern='custom text, {traceback_msg}',
-        )),
-    )
+        )))
     @foreach(
         param(
             raised_exc=SystemExit,
@@ -474,16 +458,10 @@ class Test__exiting_on_exception(unittest.TestCase):
         self.assertNotIn('custom text', str(cm.exception))
 
 
-    @foreach(
-        param(decorator_kwargs=None),
-        param(decorator_kwargs=dict()),
-        param(decorator_kwargs=dict(exc_message_pattern='custom text, {traceback_msg}')),
-        param(decorator_kwargs=dict(exc_factory=RuntimeError)),
-        param(decorator_kwargs=dict(
+    @foreach(param(decorator_kwargs=None), param(decorator_kwargs={}), param(decorator_kwargs=dict(exc_message_pattern='custom text, {traceback_msg}')), param(decorator_kwargs=dict(exc_factory=RuntimeError)), param(decorator_kwargs=dict(
             exc_factory=RuntimeError,
             exc_message_pattern='custom text, {traceback_msg}',
-        )),
-    )
+        )))
     def test_without_any_exception(self, decorator_kwargs):
         m = MagicMock()
 

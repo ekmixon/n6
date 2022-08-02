@@ -438,7 +438,7 @@ class _AMQPHandlerTestCaseMixin(TestCaseMixin):
             u'hostname': unicode(cls.get_hostname()),
             u'script_basename': unicode(cls.get_script_basename()),
         }
-        items.update(custom_items)
+        items |= custom_items
         return items
 
     @staticmethod
@@ -608,31 +608,22 @@ class TestAMQPHandler_serializer_adjusts_record_keys(_AMQPHandlerTestCaseMixin, 
             # * non-str and too long
             10 ** example_big_length: 43,
         })
-        expected_deserialized_rec = self.get_constant_log_record_items({
-            u'exc_text': ANY,
-            u'levelname': ANY,
-            u'levelno': ANY,
+        expected_deserialized_rec = self.get_constant_log_record_items(
+            {
+                u'exc_text': ANY,
+                u'levelname': ANY,
+                u'levelno': ANY,
+                u'msg': u'foo %d',
+                u'args': [42],
+                u'message': u'foo 42',
+                u'\\u0105': u'ę',
+                u"('foo',)": [u'bar'],
+                f"{u'x_' * ((KEY_MAX_LENGTH - 6) // 2)}x[...]": u'x_'
+                * example_big_length,
+                f"1{u'0' * (KEY_MAX_LENGTH - 6)}[...]": 43,
+            }
+        )
 
-            u'msg': u'foo %d',
-            u'args': [42],
-            u'message': u'foo 42',
-
-            # * non-ascii escaped
-            u'\\u0105': u'ę',
-
-            # * non-str coerced to str
-            u"('foo',)": [u'bar'],
-
-            # * too long trimmed
-            #   (note: here `(KEY_MAX_LENGTH - 6) // 2` is used because
-            #          len(u'x[...]') == 6 and len(u'x_') == 2)
-            u'{}x[...]'.format(u'x_' * ((KEY_MAX_LENGTH - 6) // 2)): u'x_' * example_big_length,
-
-            # * non-str coerced to str + too long trimmed
-            #   (note: here `KEY_MAX_LENGTH - 6` is used because
-            #          len(u'1') + len(u'[...]') == 6)
-            u'1{}[...]'.format(u'0' * (KEY_MAX_LENGTH - 6)): 43,
-        })
 
         serialized_rec = serializer(rec)
 
