@@ -1,4 +1,4 @@
-FROM rabbitmq:3.8-management
+FROM rabbitmq:3.11.26-management
 
 # interactive mode
 ENV TERM xterm
